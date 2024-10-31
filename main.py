@@ -5,6 +5,9 @@ from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.types import BotCommand, BotCommandScopeDefault
+
+from database.database import async_engine
+from database import Base
 from routers import admin, users
 
 from settings import settings
@@ -35,10 +38,17 @@ async def start_bot() -> None:
     dispatcher = io.Dispatcher(storage=storage)
 
     dispatcher.include_routers(admin.router, users.router)
+    await init_models()
 
     await dispatcher.start_polling(bot)
 
 
+async def init_models():
+    async with async_engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
+        await conn.run_sync(Base.metadata.create_all)
+
+
 if __name__ == "__main__":
-    # database.create_db()
+
     asyncio.run(start_bot())

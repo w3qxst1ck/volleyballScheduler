@@ -1,21 +1,51 @@
-from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 from settings import settings
 
 
-engine = create_engine(f'postgresql://{settings.db.postgres_user}:{settings.db.postgres_password}'
-                       f'@{settings.db.postgres_host}:{settings.db.postgres_port}/{settings.db.postgres_db}')
-
-Session = sessionmaker(
-    engine,
-    autocommit=False,
-    autoflush=False,
+async_engine = create_async_engine(
+    url=settings.db.DATABASE_URL,
+    # echo=True,
 )
 
-Base = declarative_base()
+
+async_session_factory = async_sessionmaker(async_engine, autocommit=False)
 
 
-def create_db():
-    Base.metadata.create_all(engine)
-    print('Database created')
+# class DatabaseSessionManager:
+#     def __init__(self, host: str, engine_kwargs: dict[str, Any] = {}):
+#         self._engine = create_async_engine(host, **engine_kwargs)
+#         self._sessionmaker = async_sessionmaker(autocommit=False, bind=self._engine)
+#
+#     async def close(self):
+#         if self._engine is None:
+#             raise Exception("DatabaseSessionManager is not initialized")
+#         await self._engine.dispose()
+#
+#         self._engine = None
+#         self._sessionmaker = None
+#
+#     @contextlib.asynccontextmanager
+#     async def connect(self) -> AsyncIterator[AsyncConnection]:
+#         if self._engine is None:
+#             raise Exception("DatabaseSessionManager is not initialized")
+#
+#         async with self._engine.begin() as connection:
+#             try:
+#                 yield connection
+#             except Exception:
+#                 await connection.rollback()
+#                 raise
+#
+#     @contextlib.asynccontextmanager
+#     async def session(self) -> AsyncIterator[AsyncSession]:
+#         if self._sessionmaker is None:
+#             raise Exception("DatabaseSessionManager is not initialized")
+#
+#         session = self._sessionmaker()
+#         try:
+#             yield session
+#         except Exception:
+#             await session.rollback()
+#             raise
+#         finally:
+#             await session.close()
