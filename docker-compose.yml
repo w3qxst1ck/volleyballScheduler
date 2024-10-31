@@ -1,0 +1,22 @@
+services:
+  bot:
+    container_name: "bot"
+    build: ./
+    command: sh -c "python main.py"
+    env_file:
+      - .env
+    depends_on:
+      - postgresdb
+
+  postgresdb:
+    image: postgres:13.1
+    restart: always
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    env_file:
+      - ./.env
+    ports:
+      - 5434:5432
+
+volumes:
+  postgres_data:
