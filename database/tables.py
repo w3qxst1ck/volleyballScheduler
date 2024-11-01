@@ -3,21 +3,11 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship, DeclarativeBase
 from sqlalchemy import text, ForeignKey
 
 
-class BaseCustom(DeclarativeBase):
-    repr_cols_num = 3
-    repr_cols = tuple()
-
-    def __repr__(self):
-        """Relationships не используются в repr(), т.к. могут вести к неожиданным подгрузкам"""
-        cols = []
-        for idx, col in enumerate(self.__table__.columns.keys()):
-            if col in self.repr_cols or idx < self.repr_cols_num:
-                cols.append(f"{col}={getattr(self, col)}")
-
-        return f"<{self.__class__.__name__} {', '.join(cols)}>"
+class Base(DeclarativeBase):
+    pass
 
 
-class User(BaseCustom):
+class User(Base):
     """Таблица для хранения пользователей"""
     __tablename__ = "users"
 
@@ -34,7 +24,7 @@ class User(BaseCustom):
     )
 
 
-class Event(BaseCustom):
+class Event(Base):
     """Таблица для событий"""
     __tablename__ = "events"
 
@@ -50,7 +40,7 @@ class Event(BaseCustom):
     )
 
 
-class EventsUsers(BaseCustom):
+class EventsUsers(Base):
     """Many to many relationship"""
     __tablename__ = "events_users"
 

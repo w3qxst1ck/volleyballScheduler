@@ -7,7 +7,7 @@ from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.types import BotCommand, BotCommandScopeDefault
 
 from database.database import async_engine
-from database import Base
+from database.tables import Base
 from routers import admin, users
 
 from settings import settings
