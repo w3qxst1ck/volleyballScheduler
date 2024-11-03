@@ -17,6 +17,7 @@ class AsyncOrm:
             await conn.run_sync(Base.metadata.drop_all)
             await conn.run_sync(Base.metadata.create_all)
 
+    # USERS
     @staticmethod
     async def add_user(user_add: schemas.UserAdd):
         """Создание tables.User"""
@@ -59,3 +60,62 @@ class AsyncOrm:
 
             users = [schemas.UserRel.model_validate(row, from_attributes=True) for row in rows]
             return users
+
+    # EVENTS
+    @staticmethod
+    async def add_event(event: schemas.EventAdd):
+        """Создание tables.Event"""
+        async with async_session_factory() as session:
+            event = tables.Event(**event.dict())
+            session.add(event)
+            await session.flush()
+            await session.commit()
+
+    @staticmethod
+    async def get_event_by_id(event_id: int) -> schemas.Event:
+        """Получение tables.User по id"""
+        async with async_session_factory() as session:
+            query = select(tables.Event).where(tables.Event.id == event_id)
+            result = await session.execute(query)
+            row = result.scalars().first()
+
+            event = schemas.Event.model_validate(row, from_attributes=True)
+            return event
+
+    @staticmethod
+    async def get_events() -> List[schemas.Event]:
+        """Получение всех tables.Event"""
+        async with async_session_factory() as session:
+            query = select(tables.Event)
+            result = await session.execute(query)
+            rows = result.scalars().all()
+
+            events = [schemas.Event.model_validate(row, from_attributes=True) for row in rows]
+            return events
+
+    @staticmethod
+    async def get_events_with_users() -> List[schemas.EventRel]:
+        """Получение всех tables.Event со связанными tables.User"""
+        async with async_session_factory() as session:
+            query = select(tables.Event).options(joinedload(tables.Event.users_registered))
+            result = await session.execute(query)
+            rows = result.unique().scalars().all()
+
+            events = [schemas.EventRel.model_validate(row, from_attributes=True) for row in rows]
+            return events
+
+    # EVENTS_USERS
+    @staticmethod
+    async def add_user_to_event(event_id: int, user_id: int):
+        """Добавление tables.User в tables.Event.users_registered"""
+        async with async_session_factory() as session:
+            event_user = tables.EventsUsers(
+                event_id=event_id,
+                user_id=user_id
+            )
+            session.add(event_user)
+            await session.flush()
+            await session.commit()
+
+
+

@@ -51,10 +51,10 @@ class Event(Base):
 
 
 class EventsUsers(Base):
-    """Many to many relationship"""
+    """Many-to-many relationship"""
     __tablename__ = "events_users"
 
-    id: Mapped[int] = mapped_column(primary_key=True)
+    # id: Mapped[int] = mapped_column(primary_key=True)
 
     user_id: Mapped[int] = mapped_column(
         ForeignKey("users.id", ondelete="CASCADE"),

@@ -31,7 +31,7 @@ class UserRel(User):
 
 
 class EventRel(Event):
-    users: list["User"]
+    users_registered: list["User"]
 
 
 
