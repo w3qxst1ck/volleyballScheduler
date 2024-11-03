@@ -40,6 +40,20 @@ class AsyncOrm:
             return user
 
     @staticmethod
+    async def get_user_by_tg_id(tg_id: str) -> schemas.User | None:
+        """Получение tables.User по tg_id"""
+        async with async_session_factory() as session:
+            query = select(tables.User).where(tables.User.tg_id == tg_id)
+            result = await session.execute(query)
+            row = result.scalars().first()
+
+            if row:
+                user = schemas.User.model_validate(row, from_attributes=True)
+                return user
+            else:
+                return
+
+    @staticmethod
     async def get_users() -> List[schemas.User]:
         """Получение списка tables.User"""
         async with async_session_factory() as session:

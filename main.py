@@ -25,14 +25,15 @@ async def set_commands(bot: io.Bot):
 
 async def set_description(bot: io.Bot):
     """Описание бота до запуска"""
-    await bot.set_my_description("Бот предоставляет функционал управления подписками\n\nДля запуска нажмите /start")
+    await bot.set_my_description("Бот предоставляет функционал записи на спортивные мероприятия\n\n"
+                                 "Для запуска нажмите /start")
 
 
 async def start_bot() -> None:
     """Запуск бота"""
     bot = io.Bot(settings.bot_token, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
-    # await set_commands(bot)
-    # await set_description(bot)
+    await set_commands(bot)
+    await set_description(bot)
 
     storage = MemoryStorage()
     dispatcher = io.Dispatcher(storage=storage)

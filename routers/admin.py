@@ -12,23 +12,23 @@ router = Router()
 router.message.middleware.register(CheckPrivateMessageMiddleware())
 router.message.middleware.register(CheckIsAdminMiddleware(settings.admins))
 
-
-@router.message(Command("start"))
-async def start_handler(message: types.Message) -> None:
-    """Start message"""
-    user1 = schemas.UserAdd(
-        tg_id="492-5-5533",
-        username="kiril",
-        firstname="Kirill",
-        lastname="Avdeev"
-    )
-    user2 = schemas.UserAdd(tg_id="492-5-393", username="alexandr", firstname="alex", lastname="Smehnov")
-    user3 = schemas.UserAdd(tg_id="492-5-401", username="lexey", firstname="lex", lastname="pon")
-    await AsyncOrm.add_user(user1)
-    await AsyncOrm.add_user(user2)
-    await AsyncOrm.add_user(user3)
-
-    await message.answer("Hello!")
+#
+# @router.message(Command("start"))
+# async def start_handler(message: types.Message) -> None:
+#     """Start message"""
+#     user1 = schemas.UserAdd(
+#         tg_id="492-5-5533",
+#         username="kiril",
+#         firstname="Kirill",
+#         lastname="Avdeev"
+#     )
+#     user2 = schemas.UserAdd(tg_id="492-5-393", username="alexandr", firstname="alex", lastname="Smehnov")
+#     user3 = schemas.UserAdd(tg_id="492-5-401", username="lexey", firstname="lex", lastname="pon")
+#     await AsyncOrm.add_user(user1)
+#     await AsyncOrm.add_user(user2)
+#     await AsyncOrm.add_user(user3)
+#
+#     await message.answer("Hello!")
 
 
 @router.message(Command("user"))
