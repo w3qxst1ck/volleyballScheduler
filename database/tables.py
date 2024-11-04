@@ -43,6 +43,7 @@ class Event(Base):
     title: Mapped[str] = mapped_column(index=True)
     date: Mapped[datetime.datetime] = mapped_column(server_default=text("TIMEZONE('utc', now())"))
     places: Mapped[int]
+    active: Mapped[bool] = mapped_column(default=True)
 
     users_registered: Mapped[list["User"]] = relationship(
         back_populates="events",
