@@ -71,6 +71,13 @@ class AsyncOrm:
             query = select(tables.User).where(tables.User.tg_id == tg_id) \
                 .options(joinedload(tables.User.events))
 
+            # query = """SELECT e.id, e.type, e.title, e.date, e.places, e.active, users.id
+            #             FROM events AS e
+            #             JOIN events_users ON events_users.event_id = e.id
+            #             JOIN users ON events_users.user_id = users.id
+            #             WHERE e.active = true
+            #             ORDER BY e.id;"""
+
             result = await session.execute(query)
             row = result.scalars().first()
 
