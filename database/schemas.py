@@ -24,6 +24,7 @@ class EventAdd(BaseModel):
 
 class Event(EventAdd):
     id: int
+    active: bool
 
 
 class UserRel(User):
