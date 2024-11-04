@@ -22,6 +22,7 @@ async def start_handler(message: types.Message, state: FSMContext) -> None:
 
     # пользователь уже зарегистрирован
     if user:
+        # TODO в таком случает отправлять главное меню
         await message.answer("Вы уже зарегистрированы!")
 
     # новый пользователь
@@ -34,7 +35,7 @@ async def start_handler(message: types.Message, state: FSMContext) -> None:
 
 
 @router.message(RegisterUserFSM.name)
-async def start_handler(message: types.Message, state: FSMContext) -> None:
+async def add_user_handler(message: types.Message, state: FSMContext) -> None:
     """Регистрация нового пользователя"""
     fullname = message.text
 

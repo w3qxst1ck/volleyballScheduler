@@ -1,7 +1,5 @@
 from typing import List
 
-# RUSSIAN_LETTERS = "АаБбВвГгДдЕеЁёЖжЗзИиЙйКкЛлМмНнОоПпСсТтУуФфХхЦцЧчШшЩщЪъЫыЬьЭэЮюЯя"
-
 
 class FullnameException(Exception):
     """Ошибка валидации имени и фамилии"""
