@@ -12,6 +12,7 @@ from routers import utils
 
 router = Router()
 router.message.middleware.register(CheckPrivateMessageMiddleware())
+router.callback_query.middleware.register(CheckPrivateMessageMiddleware())
 
 
 @router.message(Command("start"))
