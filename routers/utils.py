@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import List
 
 
@@ -30,3 +31,8 @@ async def get_firstname_lastname(fullname: str) -> List[str]:
             raise FullnameException
 
     return [firstname, lastname]
+
+
+def convert_date(date: datetime) -> datetime.date:
+    """Перевод даты в формат для вывода"""
+    return date.date().strftime("%d.%m.%Y")

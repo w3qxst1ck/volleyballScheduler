@@ -65,10 +65,26 @@ class AsyncOrm:
             return users
 
     @staticmethod
-    async def get_users_with_events() -> List[schemas.UserRel]:
+    async def get_user_with_events(tg_id: str) -> schemas.UserRel:
+        """Получение событий с этим пользователем"""
+        async with async_session_factory() as session:
+            query = select(tables.User).where(tables.User.tg_id == tg_id) \
+                .options(joinedload(tables.User.events))
+
+            result = await session.execute(query)
+            row = result.scalars().first()
+
+            user = schemas.UserRel.model_validate(row, from_attributes=True)
+            return user
+
+    @staticmethod
+    async def get_users_with_events(only_active: bool) -> List[schemas.UserRel]:
         """Получение tables.User с tables.Events"""
         async with async_session_factory() as session:
-            query = select(tables.User).options(joinedload(tables.User.events))
+            if only_active:
+                query = select(tables.User).join(tables.User.events).filter(tables.Event.active == True) # TODO
+            else:
+                query = select(tables.User).options(joinedload(tables.User.events))
             result = await session.execute(query)
             rows = result.unique().scalars().all()
 
@@ -97,21 +113,42 @@ class AsyncOrm:
             return event
 
     @staticmethod
-    async def get_events() -> List[schemas.Event]:
+    async def get_event_with_users(event_id: int) -> schemas.EventRel:
+        """Событие с его пользователями"""
+        async with async_session_factory() as session:
+            query = select(tables.Event) \
+                .where(tables.Event.id == event_id) \
+                .options(joinedload(tables.Event.users_registered))
+
+            result = await session.execute(query)
+            row = result.scalars().first()
+
+            event = schemas.EventRel.model_validate(row, from_attributes=True)
+            return event
+
+    @staticmethod
+    async def get_events(only_active: bool = True) -> List[schemas.Event]:
         """Получение всех tables.Event"""
         async with async_session_factory() as session:
-            query = select(tables.Event)
+            if only_active:
+                query = select(tables.Event).where(tables.Event.active == True).order_by(tables.Event.date.asc())
+            else:
+                query = select(tables.Event).order_by(tables.Event.date.asc())
             result = await session.execute(query)
             rows = result.scalars().all()
 
             events = [schemas.Event.model_validate(row, from_attributes=True) for row in rows]
             return events
 
+
     @staticmethod
-    async def get_events_with_users() -> List[schemas.EventRel]:
+    async def get_events_with_users(only_active: bool = True) -> List[schemas.EventRel]:
         """Получение всех tables.Event со связанными tables.User"""
         async with async_session_factory() as session:
-            query = select(tables.Event).options(joinedload(tables.Event.users_registered))
+            if only_active:
+                query = select(tables.Event).where(tables.Event.active == True).options(joinedload(tables.Event.users_registered))
+            else:
+                query = select(tables.Event).options(joinedload(tables.Event.users_registered))
             result = await session.execute(query)
             rows = result.unique().scalars().all()
 
@@ -130,6 +167,19 @@ class AsyncOrm:
             session.add(event_user)
             await session.flush()
             await session.commit()
+
+    @staticmethod
+    async def delete_user_from_event(event_id: int, user_id: int):
+        """Добавление tables.User в tables.Event.users_registered"""
+        async with async_session_factory() as session:
+            event_user = tables.EventsUsers(
+                event_id=event_id,
+                user_id=user_id
+            )
+            session.delete(event_user)
+            await session.flush()
+            await session.commit()
+
 
 
 

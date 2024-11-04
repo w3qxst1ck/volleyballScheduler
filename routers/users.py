@@ -4,7 +4,7 @@ from aiogram.filters import Command, StateFilter
 from aiogram.fsm.context import FSMContext
 
 from routers.middlewares import CheckPrivateMessageMiddleware
-from routers import keyboards as kb
+from routers import keyboards as kb, messages as ms
 from routers.fsm_states import RegisterUserFSM
 from database import schemas
 from database.orm import AsyncOrm
@@ -25,6 +25,7 @@ async def start_handler(message: types.Message, state: FSMContext) -> None:
     if user:
         # TODO в таком случает отправлять главное меню
         await message.answer("Вы уже зарегистрированы!")
+        await message.answer("Выберите действие", reply_markup=kb.menu_users_keyboard().as_markup())
 
     # новый пользователь
     else:
@@ -62,6 +63,7 @@ async def add_user_handler(message: types.Message, state: FSMContext) -> None:
         await state.clear()
 
         await message.answer("Вы успешно зарегистрированы!")
+        await message.answer("Выберите действие", reply_markup=kb.menu_users_keyboard().as_markup())
 
     # ошибка введения данных
     except utils.FullnameException:
@@ -76,6 +78,65 @@ async def add_user_handler(message: types.Message, state: FSMContext) -> None:
             pass
 
         await state.update_data(prev_mess=msg)
+
+
+@router.callback_query(lambda callback: callback.data.split("_")[1] == "user-menu")
+async def back_menu_handler(callback: types.CallbackQuery) -> None:
+    """Главное меню пользователя"""
+    await callback.message.edit_text("Выберите действие", reply_markup=kb.menu_users_keyboard().as_markup())
+
+
+# USER EVENTS
+@router.callback_query(lambda callback: callback.data == "menu_events")
+async def user_events_handler(callback: types.CallbackQuery) -> None:
+    """Вывод мероприятий"""
+    events = await AsyncOrm.get_events(only_active=True)
+
+    msg = "Ближайшие мероприятия"
+    if not events:
+        msg = "В ближайшее время нет мероприятий"
+
+    await callback.message.edit_text(msg, reply_markup=kb.events_keyboard(events).as_markup())
+
+
+@router.callback_query(lambda callback: callback.data.split("_")[1] == "my-events")
+async def user_event_handler(callback: types.CallbackQuery) -> None:
+    """Вывод мероприятий куда пользователь уже зарегистрирован"""
+    user_with_events = await AsyncOrm.get_user_with_events(str(callback.from_user.id))
+    if not user_with_events.events:
+        msg = "Вы пока никуда не зарегистрировались\n\nВы можете это сделать во вкладке \n\"🗓️ Мероприятия\""
+    else:
+        msg = "Вы зарегистрированы:"
+
+    await callback.message.edit_text(msg, reply_markup=kb.user_events(user_with_events.events).as_markup())
+
+
+@router.callback_query(lambda callback: callback.data.split("_")[0] == "my-events")
+async def event_info_handler(callback: types.CallbackQuery) -> None:
+    """Карточка событий"""
+    event_id = int(callback.data.split("_")[1])
+    event = await AsyncOrm.get_event_with_users(event_id)
+
+    # проверяем участвует ли пользователь уже в этом событии
+    user = await AsyncOrm.get_user_by_tg_id(str(callback.from_user.id))
+    if user.id in event.users_registered:
+        registered = True
+    else:
+        registered = True
+
+    msg = ms.event_card_message(event, registered)
+
+    await callback.message.edit_text(msg, reply_markup=kb.event_car_keyboard(event_id, registered).as_markup())
+
+
+# USER PROFILE
+@router.callback_query(lambda callback: callback.data == "menu_profile")
+async def main_menu_handler(callback: types.CallbackQuery) -> None:
+    """Профиль пользователя"""
+    user = await AsyncOrm.get_user_by_tg_id(str(callback.from_user.id))
+
+    message = ms.user_profile_message(user)
+    await callback.message.edit_text(message, reply_markup=kb.user_profile_keyboard().as_markup())
 
 
 # CANCEL BUTTON
