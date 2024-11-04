@@ -126,7 +126,24 @@ async def event_info_handler(callback: types.CallbackQuery) -> None:
 
     msg = ms.event_card_message(event, registered)
 
-    await callback.message.edit_text(msg, reply_markup=kb.event_car_keyboard(event_id, registered).as_markup())
+    await callback.message.edit_text(msg, reply_markup=kb.event_card_keyboard(event_id, user.id, registered).as_markup())
+
+
+@router.callback_query(lambda callback: callback.data.split("_")[0] in ["unreg-user", "reg-user"])
+async def reg_unreg_user_to_event_handler(callback: types.CallbackQuery) -> None:
+    """Регистрация и удаление пользователя из события"""
+    action = callback.data.split("_")[0]
+    event_id = int(callback.data.split("_")[1])
+    user_id = int(callback.data.split("_")[2])
+
+    if action == "reg-user":
+        await AsyncOrm.add_user_to_event(event_id, user_id)
+        await callback.message.edit_text("Вы зарегистрированы")
+
+    else:
+        await AsyncOrm.delete_user_from_event(event_id, user_id)
+        await callback.message.edit_text("Вы удалены из события")
+
 
 
 # USER PROFILE

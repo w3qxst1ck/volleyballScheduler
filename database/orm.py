@@ -1,6 +1,6 @@
 from typing import List
 
-from sqlalchemy import select
+from sqlalchemy import select, delete
 from sqlalchemy.orm import joinedload
 
 from database.database import async_engine, async_session_factory
@@ -172,11 +172,13 @@ class AsyncOrm:
     async def delete_user_from_event(event_id: int, user_id: int):
         """Добавление tables.User в tables.Event.users_registered"""
         async with async_session_factory() as session:
-            event_user = tables.EventsUsers(
-                event_id=event_id,
-                user_id=user_id
+            query = delete(tables.EventsUsers)\
+                .where(
+                    (tables.EventsUsers.user_id == user_id) &
+                    (tables.EventsUsers.event_id == event_id)
             )
-            session.delete(event_user)
+
+            await session.execute(query)
             await session.flush()
             await session.commit()
 

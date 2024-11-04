@@ -61,14 +61,14 @@ def user_events(events: list[Event]) -> InlineKeyboardBuilder:
     return keyboard
 
 
-def event_car_keyboard(event_id: int, registered: bool) -> InlineKeyboardBuilder:
+def event_card_keyboard(event_id: int, user_id: int, registered: bool) -> InlineKeyboardBuilder:
     """Зарегистрироваться и отменить регистрацию"""
     keyboard = InlineKeyboardBuilder()
 
     if registered:
-        keyboard.row(InlineKeyboardButton(text=f"❌ Отменить регистрацию", callback_data=f"unreg-user_{event_id}"))
+        keyboard.row(InlineKeyboardButton(text=f"❌ Отменить регистрацию", callback_data=f"unreg-user_{event_id}_{user_id}"))
     else:
-        keyboard.row(InlineKeyboardButton(text=f"✅ Зарегистрироваться", callback_data=f"reg-user_{event_id}"))
+        keyboard.row(InlineKeyboardButton(text=f"✅ Зарегистрироваться", callback_data=f"reg-user_{event_id}_{user_id}"))
 
     keyboard.row(InlineKeyboardButton(text=f"🔙 назад", callback_data=f"menu_my-events"))
     return keyboard

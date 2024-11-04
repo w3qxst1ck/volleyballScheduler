@@ -17,6 +17,8 @@ async def set_commands(bot: io.Bot):
     """Перечень команд для бота"""
     commands = [
         BotCommand(command="menu", description="Главное меню"),
+        BotCommand(command="events", description="События"),
+        BotCommand(command="add_event", description="Добавить событие"),
         BotCommand(command="help", description="Инструкция и поддержка"),
     ]
 
