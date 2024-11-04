@@ -230,9 +230,6 @@ async def add_event_date_handler(message: types.Message, state: FSMContext) -> N
     await message.answer(f"Событие <b>\"{event.title}\"</b> в <b>{date_time_str}</b> успешно создано ✅")
 
 
-
-
-
 #
 # @router.message(Command("start"))
 # async def start_handler(message: types.Message) -> None:

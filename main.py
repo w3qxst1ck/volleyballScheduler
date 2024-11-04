@@ -1,14 +1,16 @@
 import asyncio
+from datetime import datetime
 
 import aiogram as io
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.types import BotCommand, BotCommandScopeDefault
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from database.database import async_engine
 from database.tables import Base
-from routers import admin, users
+from routers import admin, users, apsched
 
 from settings import settings
 
@@ -39,6 +41,12 @@ async def start_bot() -> None:
 
     storage = MemoryStorage()
     dispatcher = io.Dispatcher(storage=storage)
+
+    # SCHEDULER
+    scheduler = AsyncIOScheduler(timezone="Europe/Moscow")
+    scheduler.add_job(apsched.run_every_day_check, trigger="cron", year='*', month='*', day="*", hour=9, minute=0,
+                      second=0, start_date=datetime.now(), kwargs={})
+    scheduler.start()
 
     dispatcher.include_routers(admin.router, users.router)
     await init_models()

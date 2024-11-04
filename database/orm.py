@@ -1,6 +1,6 @@
 from typing import List
 
-from sqlalchemy import select, delete
+from sqlalchemy import select, delete, update
 from sqlalchemy.orm import joinedload
 
 from database.database import async_engine, async_session_factory
@@ -186,6 +186,18 @@ class AsyncOrm:
                     (tables.EventsUsers.user_id == user_id) &
                     (tables.EventsUsers.event_id == event_id)
             )
+
+            await session.execute(query)
+            await session.flush()
+            await session.commit()
+
+    @staticmethod
+    async def update_event_status(event_id: int):
+        """Изменение статуса прошедшего события"""
+        async with async_session_factory() as session:
+            query = update(tables.Event)\
+                .where(tables.Event.id == event_id)\
+                .values(active=False)
 
             await session.execute(query)
             await session.flush()
