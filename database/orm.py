@@ -119,6 +119,8 @@ class AsyncOrm:
             query = select(tables.Event) \
                 .where(tables.Event.id == event_id) \
                 .options(joinedload(tables.Event.users_registered))
+                # TODO: сортировка по имени пользователя
+                # .order_by(tables.User.firstname)
 
             result = await session.execute(query)
             row = result.scalars().first()

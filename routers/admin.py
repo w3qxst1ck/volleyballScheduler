@@ -12,6 +12,7 @@ from settings import settings
 from routers.fsm_states import AddEventFSM
 from routers import keyboards as kb
 from routers import utils
+from routers import messages as ms
 
 router = Router()
 router.message.middleware.register(CheckPrivateMessageMiddleware())
@@ -20,9 +21,50 @@ router.message.middleware.register(CheckIsAdminMiddleware(settings.admins))
 
 # GET EVENTS
 @router.message(Command("events"))
-async def get_events_handler(message: types.Message) -> None:
+@router.callback_query(lambda callback:callback.data == "back-admin-events")
+async def get_events_handler(message: types.Message | types.CallbackQuery) -> None:
     """Получение всех событий"""
-    await message.answer("Все активные события", reply_markup=kb.cancel_keyboard().as_markup())
+    events = await AsyncOrm.get_events()
+
+    if type(message) == types.Message:
+        await message.answer("События", reply_markup=kb.events_keyboard_admin(events).as_markup())
+    else:
+        await message.message.edit_text("События", reply_markup=kb.events_keyboard_admin(events).as_markup())
+
+
+@router.callback_query(lambda callback: callback.data != "cancel" and callback.data.split("_")[0] == "admin-event")
+async def event_info_handler(callback: types.CallbackQuery) -> None:
+    """Карточка события для админа"""
+    event_id = int(callback.data.split("_")[1])
+    event = await AsyncOrm.get_event_with_users(event_id)
+    msg = ms.event_card_for_admin_message(event)
+
+    await callback.message.edit_text(msg, reply_markup=kb.event_card_keyboard_admin(event).as_markup())
+
+
+@router.callback_query(lambda callback: callback.data != "cancel" and callback.data.split("_")[0] == "admin-event-user")
+async def event_info_handler(callback: types.CallbackQuery) -> None:
+    """Предложение удалить пользователя в событии для админа"""
+    event_id = int(callback.data.split("_")[1])
+    user_id = int(callback.data.split("_")[2])
+
+    await callback.message.edit_text("Удалить пользователя с события?",
+                                     reply_markup=kb.yes_no_keyboard_for_admin_delete_user_from_event(event_id, user_id).as_markup())
+
+
+@router.callback_query(lambda callback: callback.data != "cancel" and callback.data.split("_")[0] == "admin-event-user-delete")
+async def event_info_handler(callback: types.CallbackQuery) -> None:
+    """Удаление пользователя в событии для админа"""
+    event_id = int(callback.data.split("_")[1])
+    user_id = int(callback.data.split("_")[2])
+
+    await AsyncOrm.delete_user_from_event(event_id, user_id)
+    await callback.message.delete()
+    await callback.message.answer("Пользователь удален с события ✅")
+
+    event = await AsyncOrm.get_event_with_users(event_id)
+    msg = ms.event_card_for_admin_message(event)
+    await callback.message.answer(msg, reply_markup=kb.event_card_keyboard_admin(event).as_markup())
 
 
 # ADD EVENT

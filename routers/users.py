@@ -16,16 +16,20 @@ router.callback_query.middleware.register(CheckPrivateMessageMiddleware())
 
 
 @router.message(Command("start"))
+@router.message(Command("menu"))
 async def start_handler(message: types.Message, state: FSMContext) -> None:
     """Start message, начало RegisterUserFsm"""
     tg_id = str(message.from_user.id)
     user = await AsyncOrm.get_user_by_tg_id(tg_id)
 
-    # пользователь уже зарегистрирован
+    # старый пользователь
     if user:
-        # TODO в таком случает отправлять главное меню
-        await message.answer("Вы уже зарегистрированы!")
-        await message.answer("Выберите действие", reply_markup=kb.menu_users_keyboard().as_markup())
+        # /start handler
+        if message.text == "/start":
+            await message.answer("Вы уже зарегистрированы!")
+        # /menu handler
+        else:
+            await message.answer("Выберите действие", reply_markup=kb.menu_users_keyboard().as_markup())
 
     # новый пользователь
     else:
@@ -96,7 +100,7 @@ async def user_events_handler(callback: types.CallbackQuery) -> None:
     if not events:
         msg = "В ближайшее время нет мероприятий"
 
-    await callback.message.edit_text(msg, reply_markup=kb.events_keyboard(events).as_markup())
+    await callback.message.edit_text(msg, reply_markup=kb.events_keyboard_users(events).as_markup())
 
 
 @router.callback_query(lambda callback: callback.data.split("_")[1] == "my-events")
@@ -145,7 +149,6 @@ async def reg_unreg_user_to_event_handler(callback: types.CallbackQuery) -> None
         await callback.message.edit_text("Вы удалены из события")
 
 
-
 # USER PROFILE
 @router.callback_query(lambda callback: callback.data == "menu_profile")
 async def main_menu_handler(callback: types.CallbackQuery) -> None:
@@ -157,7 +160,7 @@ async def main_menu_handler(callback: types.CallbackQuery) -> None:
 
 
 # CANCEL BUTTON
-@router.callback_query(lambda callback: callback.data == "cancel", StateFilter("*"))
+@router.callback_query(lambda callback: callback.data == "button_cancel", StateFilter("*"))
 async def cancel_handler(callback: types.CallbackQuery, state: FSMContext):
     """Cancel FSM and delete last message"""
     await state.clear()
