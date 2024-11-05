@@ -106,7 +106,7 @@ async def user_events_handler(callback: types.CallbackQuery) -> None:
 @router.callback_query(lambda callback: callback.data.split("_")[1] == "my-events")
 async def user_event_handler(callback: types.CallbackQuery) -> None:
     """Вывод мероприятий куда пользователь уже зарегистрирован"""
-    user_with_events = await AsyncOrm.get_user_with_events(str(callback.from_user.id))
+    user_with_events = await AsyncOrm.get_user_with_events(str(callback.from_user.id), only_active=True)
     if not user_with_events.events:
         msg = "Вы пока никуда не зарегистрировались\n\nВы можете это сделать во вкладке \n\"🗓️ Мероприятия\""
     else:

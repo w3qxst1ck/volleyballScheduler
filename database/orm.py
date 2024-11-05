@@ -1,6 +1,6 @@
 from typing import List
 
-from sqlalchemy import select, delete, update
+from sqlalchemy import select, delete, update, text, and_
 from sqlalchemy.orm import joinedload
 
 from database.database import async_engine, async_session_factory
@@ -65,20 +65,31 @@ class AsyncOrm:
             return users
 
     @staticmethod
-    async def get_user_with_events(tg_id: str) -> schemas.UserRel:
+    async def get_user_with_events(tg_id: str, only_active: bool = True) -> schemas.UserRel:
         """Получение событий с этим пользователем"""
         async with async_session_factory() as session:
-            query = select(tables.User).where(tables.User.tg_id == tg_id) \
-                .options(joinedload(tables.User.events))
+            if only_active:
+                # query = text("""SELECT u.id, u.tg_id, u.username, u.firstname, u.lastname, u.level, events.id,
+                #             events.type, events.title, events.date, events.places, events.active
+                #             FROM users AS u
+                #             LEFT OUTER JOIN (events_users JOIN events ON events.id = events_users.event_id) ON
+                #             u.id = events_users.user_id
+                #             WHERE u.tg_id = '420551454'
+                #             AND events.active = true
+                #             ORDER BY events.date""")
+                query = select(tables.User)\
+                    .filter(and_(tables.User.tg_id == tg_id, tables.Event.active == True))\
+                    .options(joinedload(tables.User.events))
 
-            # query = """SELECT e.id, e.type, e.title, e.date, e.places, e.active, users.id
-            #             FROM events AS e
-            #             JOIN events_users ON events_users.event_id = e.id
-            #             JOIN users ON events_users.user_id = users.id
-            #             WHERE e.active = true
-            #             ORDER BY e.id;"""
+                result = await session.execute(query)
+                print(result)
 
-            result = await session.execute(query)
+            else:
+                query = select(tables.User).where(tables.User.tg_id == tg_id) \
+                    .options(joinedload(tables.User.events))
+
+                result = await session.execute(query)
+
             row = result.scalars().first()
 
             user = schemas.UserRel.model_validate(row, from_attributes=True)
