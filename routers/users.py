@@ -27,6 +27,7 @@ async def start_handler(message: types.Message, state: FSMContext) -> None:
         # /start handler
         if message.text == "/start":
             await message.answer("Вы уже зарегистрированы!")
+
         # /menu handler
         else:
             await message.answer("Выберите действие", reply_markup=kb.menu_users_keyboard().as_markup())
@@ -71,9 +72,11 @@ async def add_user_handler(message: types.Message, state: FSMContext) -> None:
 
     # ошибка введения данных
     except utils.FullnameException:
-        msg = await message.answer("Необходимо ввести <b>имя и фамилию через пробел</b> без знаков препинания, символов "
-                                   "и цифр (например Иван Иванов)",
-                                   reply_markup=kb.cancel_keyboard().as_markup())
+        msg = await message.answer(
+            "Необходимо ввести <b>имя и фамилию через пробел</b> без знаков препинания, символов "
+            "и цифр (например Иван Иванов)",
+            reply_markup=kb.cancel_keyboard().as_markup()
+        )
 
         data = await state.get_data()
         try:
@@ -94,23 +97,48 @@ async def back_menu_handler(callback: types.CallbackQuery) -> None:
 @router.callback_query(lambda callback: callback.data == "menu_events")
 async def user_events_handler(callback: types.CallbackQuery) -> None:
     """Вывод мероприятий"""
-    events = await AsyncOrm.get_events(only_active=True)
+    events = await AsyncOrm.get_events_with_users(only_active=True)
+    user = await AsyncOrm.get_user_by_tg_id(str(callback.from_user.id))
 
-    msg = "Ближайшие мероприятия"
+    msg = "Ближайшие мероприятия\n\nМероприятия, на которые вы зарегистрированы, помечены '✔️'"
     if not events:
         msg = "В ближайшее время нет мероприятий"
 
-    await callback.message.edit_text(msg, reply_markup=kb.events_keyboard_users(events).as_markup())
+    await callback.message.edit_text(msg, reply_markup=kb.events_keyboard(events, user).as_markup())
 
 
-@router.callback_query(lambda callback: callback.data.split("_")[1] == "my-events")
+@router.callback_query(lambda callback: callback.data.split("_")[0] == "user-event")
 async def user_event_handler(callback: types.CallbackQuery) -> None:
+    """Вывод мероприятия для пользователя из общего списка 'Events'"""
+    event_id = int(callback.data.split("_")[1])
+    user = await AsyncOrm.get_user_by_tg_id(str(callback.from_user.id))
+    event_with_users = await AsyncOrm.get_event_with_users(event_id)
+
+    # если зарегистрирован
+    if user in event_with_users.users_registered:
+        registered = True
+    # не зарегистрирован
+    else:
+        registered = False
+
+    msg = ms.event_card_message(event_with_users, registered)
+
+    await callback.message.edit_text(
+        msg,
+        reply_markup=kb.event_card_keyboard(event_id, user.id, registered, "menu_events", "events").as_markup()
+    )
+
+
+# USER ALREADY REGISTERED EVENTS
+@router.callback_query(lambda callback: callback.data.split("_")[1] == "my-events")
+async def user_event_registered_handler(callback: types.CallbackQuery) -> None:
     """Вывод мероприятий куда пользователь уже зарегистрирован"""
     user_with_events = await AsyncOrm.get_user_with_events(str(callback.from_user.id), only_active=True)
+
     if not user_with_events.events:
         msg = "Вы пока никуда не зарегистрировались\n\nВы можете это сделать во вкладке \n\"🗓️ Мероприятия\""
     else:
-        msg = "Вы зарегистрированы:"
+        msg = "Вы являетесь участником следующих мероприятий:"
 
     await callback.message.edit_text(msg, reply_markup=kb.user_events(user_with_events.events).as_markup())
 
@@ -123,14 +151,18 @@ async def event_info_handler(callback: types.CallbackQuery) -> None:
 
     # проверяем участвует ли пользователь уже в этом событии
     user = await AsyncOrm.get_user_by_tg_id(str(callback.from_user.id))
-    if user.id in event.users_registered:
+
+    if user in event.users_registered:
         registered = True
     else:
-        registered = True
+        registered = False
 
     msg = ms.event_card_message(event, registered)
 
-    await callback.message.edit_text(msg, reply_markup=kb.event_card_keyboard(event_id, user.id, registered).as_markup())
+    await callback.message.edit_text(
+        msg,
+        reply_markup=kb.event_card_keyboard(event_id, user.id, registered, "menu_my-events", "my-events").as_markup()
+    )
 
 
 @router.callback_query(lambda callback: callback.data.split("_")[0] in ["unreg-user", "reg-user"])
@@ -139,14 +171,37 @@ async def reg_unreg_user_to_event_handler(callback: types.CallbackQuery) -> None
     action = callback.data.split("_")[0]
     event_id = int(callback.data.split("_")[1])
     user_id = int(callback.data.split("_")[2])
+    from_ = callback.data.split("_")[3]
 
     if action == "reg-user":
         await AsyncOrm.add_user_to_event(event_id, user_id)
+        registered_status = True
         await callback.message.edit_text("Вы зарегистрированы")
 
     else:
         await AsyncOrm.delete_user_from_event(event_id, user_id)
-        await callback.message.edit_text("Вы удалены из события")
+        registered_status = False
+        await callback.message.edit_text("Регистрация на мероприятие отменена")
+
+    event = await AsyncOrm.get_event_with_users(event_id)
+
+    # при обращении из вкладки Мероприятия
+    if from_ == "events":
+        await callback.message.answer(
+            ms.event_card_message(event, user_registered=registered_status),
+            reply_markup=kb.event_card_keyboard(
+                event_id, user_id, registered_status, "menu_events", "events"
+            ).as_markup()
+        )
+
+    # при обращении из вкладки Мои мероприятия
+    else:
+        await callback.message.answer(
+            ms.event_card_message(event, user_registered=registered_status),
+            reply_markup=kb.event_card_keyboard(
+                event_id, user_id, registered_status, "menu_my-events", "my-events"
+            ).as_markup()
+        )
 
 
 # USER PROFILE

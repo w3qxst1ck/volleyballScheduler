@@ -1,7 +1,7 @@
 from typing import List
 
 from sqlalchemy import select, delete, update, text, and_
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload, selectinload
 
 from database.database import async_engine, async_session_factory
 from database.tables import Base
@@ -68,31 +68,23 @@ class AsyncOrm:
     async def get_user_with_events(tg_id: str, only_active: bool = True) -> schemas.UserRel:
         """Получение событий с этим пользователем"""
         async with async_session_factory() as session:
-            if only_active:
-                # query = text("""SELECT u.id, u.tg_id, u.username, u.firstname, u.lastname, u.level, events.id,
-                #             events.type, events.title, events.date, events.places, events.active
-                #             FROM users AS u
-                #             LEFT OUTER JOIN (events_users JOIN events ON events.id = events_users.event_id) ON
-                #             u.id = events_users.user_id
-                #             WHERE u.tg_id = '420551454'
-                #             AND events.active = true
-                #             ORDER BY events.date""")
-                query = select(tables.User)\
-                    .filter(and_(tables.User.tg_id == tg_id, tables.Event.active == True))\
-                    .options(joinedload(tables.User.events))
+            query = select(tables.User).where(tables.User.tg_id == tg_id)\
+                .options(selectinload(tables.User.events))
 
-                result = await session.execute(query)
-                print(result)
-
-            else:
-                query = select(tables.User).where(tables.User.tg_id == tg_id) \
-                    .options(joinedload(tables.User.events))
-
-                result = await session.execute(query)
+            result = await session.execute(query)
 
             row = result.scalars().first()
 
             user = schemas.UserRel.model_validate(row, from_attributes=True)
+
+            # убираем неактивные события
+            if only_active:
+                events = filter(lambda event: event.active is True, user.events)
+                user.events = events
+
+            # сортируем по дате в порядке возрастания
+            events = sorted(user.events, key=lambda event: event.date)
+            user.events = events
             return user
 
     @staticmethod

@@ -32,13 +32,18 @@ def menu_users_keyboard() -> InlineKeyboardBuilder:
 
 
 @back_button("user-menu")
-def events_keyboard_users(events: list[Event]) -> InlineKeyboardBuilder:
+def events_keyboard(events: list[EventRel], user: User) -> InlineKeyboardBuilder:
     """Клавиатура с мероприятиями для вывода пользователю"""
     keyboard = InlineKeyboardBuilder()
 
     for event in events:
         date = convert_date(event.date)
-        keyboard.row(InlineKeyboardButton(text=f"{date} {event.title}", callback_data=f"user-event_{event.id}"))
+
+        registered = ""
+        if user in event.users_registered:
+            registered = "✔️"
+
+        keyboard.row(InlineKeyboardButton(text=f"{registered} {date} {event.title}", callback_data=f"user-event_{event.id}"))
 
     keyboard.adjust(1)
     return keyboard
@@ -63,16 +68,18 @@ def user_events(events: list[Event]) -> InlineKeyboardBuilder:
     return keyboard
 
 
-def event_card_keyboard(event_id: int, user_id: int, registered: bool) -> InlineKeyboardBuilder:
+def event_card_keyboard(event_id: int, user_id: int, registered: bool, back_to: str, from_: str) -> InlineKeyboardBuilder:
     """Зарегистрироваться и отменить регистрацию"""
     keyboard = InlineKeyboardBuilder()
 
     if registered:
-        keyboard.row(InlineKeyboardButton(text=f"❌ Отменить регистрацию", callback_data=f"unreg-user_{event_id}_{user_id}"))
+        keyboard.row(
+            InlineKeyboardButton(text=f"❌ Отменить регистрацию", callback_data=f"unreg-user_{event_id}_{user_id}_{from_}"))
     else:
-        keyboard.row(InlineKeyboardButton(text=f"✅ Зарегистрироваться", callback_data=f"reg-user_{event_id}_{user_id}"))
+        keyboard.row(InlineKeyboardButton(text=f"✅ Зарегистрироваться", callback_data=f"reg-user_{event_id}_{user_id}_{from_}"))
 
-    keyboard.row(InlineKeyboardButton(text=f"🔙 назад", callback_data=f"menu_my-events"))
+    keyboard.row(InlineKeyboardButton(text=f"🔙 назад", callback_data=f"{back_to}"))
+
     return keyboard
 
 

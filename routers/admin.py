@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from aiogram import Router, types
+from aiogram import Router, types, Bot
 from aiogram.exceptions import TelegramBadRequest
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
@@ -53,18 +53,23 @@ async def event_info_handler(callback: types.CallbackQuery) -> None:
 
 
 @router.callback_query(lambda callback: callback.data != "cancel" and callback.data.split("_")[0] == "admin-event-user-delete")
-async def event_info_handler(callback: types.CallbackQuery) -> None:
+async def event_info_handler(callback: types.CallbackQuery, bot: Bot) -> None:
     """Удаление пользователя в событии для админа"""
     event_id = int(callback.data.split("_")[1])
     user_id = int(callback.data.split("_")[2])
 
     await AsyncOrm.delete_user_from_event(event_id, user_id)
-    await callback.message.delete()
-    await callback.message.answer("Пользователь удален с события ✅")
-
     event = await AsyncOrm.get_event_with_users(event_id)
-    msg = ms.event_card_for_admin_message(event)
-    await callback.message.answer(msg, reply_markup=kb.event_card_keyboard_admin(event).as_markup())
+
+    # оповещение пользователя об удалении
+    user = await AsyncOrm.get_user_by_id(user_id)
+    msg_for_user = ms.notify_deleted_user_message(event)
+    await bot.send_message(user.tg_id, msg_for_user)
+
+    await callback.message.edit_text("Пользователь удален с события ✅")
+
+    msg_for_admin = ms.event_card_for_admin_message(event)
+    await callback.message.answer(msg_for_admin, reply_markup=kb.event_card_keyboard_admin(event).as_markup())
 
 
 # ADD EVENT

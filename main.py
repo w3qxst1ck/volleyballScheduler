@@ -44,7 +44,7 @@ async def start_bot() -> None:
 
     # # SCHEDULER
     scheduler = AsyncIOScheduler(timezone="Europe/Moscow")
-    scheduler.add_job(apsched.run_every_day, trigger="cron", year='*', month='*', day="*", hour="*", minute="*",
+    scheduler.add_job(apsched.run_every_day, trigger="cron", year='*', month='*', day="*", hour=9, minute=0,
                       second=0, start_date=datetime.now(), kwargs={"bot": bot})
     scheduler.start()
 
