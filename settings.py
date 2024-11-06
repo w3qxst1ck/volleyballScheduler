@@ -19,6 +19,7 @@ class Database(BaseSettings):
 class Settings(BaseSettings):
     bot_token: str
     admins: list
+    main_admin: str
     db: Database = Database()
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")

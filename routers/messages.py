@@ -1,6 +1,6 @@
 from database.schemas import User, EventRel
-from routers.utils import convert_date
-
+from routers.utils import convert_date, convert_time
+from settings import settings
 
 def user_profile_message(user: User) -> str:
     """Сообщение с профилем пользователя"""
@@ -47,3 +47,17 @@ def event_card_for_admin_message(event: EventRel) -> str:
         message += "<b>Участников пока нет</b>"
 
     return message
+
+
+def notify_message(event: EventRel) -> str:
+    """Сообщение для автоматического напоминания пользователю о событии"""
+    event_date = convert_date(event.date)
+    event_time = convert_time(event.date)
+    message = f"🔔 <i>Автоматическое уведомление</i>\n\n" \
+              f"Напоминаем, что вы записались на мероприятие <b>\"{event.title}\"</b>, " \
+              f"которое пройдет <b>{event_date}</b> в <b>{event_time}</b>\n\n" \
+              f"Если у вас не получится прийти, пожалуйста, сообщите об этом администратору @{settings.main_admin}"
+
+    return message
+
+

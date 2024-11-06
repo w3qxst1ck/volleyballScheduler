@@ -33,9 +33,14 @@ async def get_firstname_lastname(fullname: str) -> List[str]:
     return [firstname, lastname]
 
 
-def convert_date(date: datetime) -> datetime.date:
+def convert_date(date: datetime) -> str:
     """Перевод даты в формат для вывода"""
     return date.date().strftime("%d.%m.%Y")
+
+
+def convert_time(date: datetime) -> str:
+    """Перевод времени в формат для вывода"""
+    return date.time().strftime("%H:%M")
 
 
 def is_valid_date(date: str) -> bool:

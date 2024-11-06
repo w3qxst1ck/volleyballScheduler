@@ -160,7 +160,6 @@ class AsyncOrm:
             events = [schemas.Event.model_validate(row, from_attributes=True) for row in rows]
             return events
 
-
     @staticmethod
     async def get_events_with_users(only_active: bool = True) -> List[schemas.EventRel]:
         """Получение всех tables.Event со связанными tables.User"""
@@ -190,7 +189,7 @@ class AsyncOrm:
 
     @staticmethod
     async def delete_user_from_event(event_id: int, user_id: int):
-        """Добавление tables.User в tables.Event.users_registered"""
+        """Удаление tables.User в tables.Event.users_registered"""
         async with async_session_factory() as session:
             query = delete(tables.EventsUsers)\
                 .where(
