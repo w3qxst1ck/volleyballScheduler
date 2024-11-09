@@ -17,6 +17,7 @@ router.message.middleware.register(CheckPrivateMessageMiddleware())
 router.callback_query.middleware.register(CheckPrivateMessageMiddleware())
 
 
+# REGISTRATION
 @router.message(Command("start"))
 @router.message(Command("menu"))
 async def start_handler(message: types.Message, state: FSMContext) -> None:
