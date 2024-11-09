@@ -45,6 +45,9 @@ class Event(Base):
     places: Mapped[int]
     active: Mapped[bool] = mapped_column(default=True)
 
+    paid_confirm: Mapped[bool] = mapped_column(default=False)
+    paid: Mapped[bool] = mapped_column(default=False)
+
     users_registered: Mapped[list["User"]] = relationship(
         back_populates="events",
         secondary="events_users",

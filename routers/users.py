@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from aiogram import Router, types
 from aiogram.exceptions import TelegramBadRequest
 from aiogram.filters import Command, StateFilter
@@ -95,16 +97,31 @@ async def back_menu_handler(callback: types.CallbackQuery) -> None:
 
 # USER EVENTS
 @router.callback_query(lambda callback: callback.data == "menu_events")
-async def user_events_handler(callback: types.CallbackQuery) -> None:
-    """Вывод мероприятий"""
-    events = await AsyncOrm.get_events_with_users(only_active=True)
-    user = await AsyncOrm.get_user_by_tg_id(str(callback.from_user.id))
+async def user_events_dates_handler(callback: types.CallbackQuery) -> None:
+    """Вывод дат с мероприятиями мероприятий"""
+    # events = await AsyncOrm.get_events_with_users(only_active=True)
 
-    msg = "Ближайшие мероприятия\n\nМероприятия, на которые вы зарегистрированы, помечены '✔️'"
+    events = await AsyncOrm.get_events(only_active=True)
+    events_dates = [event.date for event in events]
+    unique_dates = utils.get_unique_dates(events_dates)
+
+    msg = "Выберите дату с мероприятием:" \
+          # "Мероприятия, на которые вы зарегистрированы, помечены '✔️'"
     if not events:
         msg = "В ближайшее время нет мероприятий"
 
-    await callback.message.edit_text(msg, reply_markup=kb.events_keyboard(events, user).as_markup())
+    await callback.message.edit_text(msg, reply_markup=kb.dates_keyboard(unique_dates).as_markup())
+
+
+@router.callback_query(lambda callback: callback.data.split("_")[0] == "events-date")
+async def user_events_dates_handler(callback: types.CallbackQuery) -> None:
+    """Вывод мероприятий в выбранную дату"""
+    date_str = callback.data.split("_")[1]
+    date = datetime.strptime(date_str, "%d.%m.%Y").date()
+
+    events = await AsyncOrm.get_events_for_date(date, only_active=True)
+    print(events)
+
 
 
 @router.callback_query(lambda callback: callback.data.split("_")[0] == "user-event")

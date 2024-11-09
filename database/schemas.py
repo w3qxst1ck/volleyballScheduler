@@ -25,6 +25,8 @@ class EventAdd(BaseModel):
 class Event(EventAdd):
     id: int
     active: bool
+    paid_confirm: bool = False
+    paid: bool = False
 
 
 class UserRel(User):

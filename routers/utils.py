@@ -90,3 +90,18 @@ def is_valid_places(places: str) -> bool:
     return True
 
 
+def get_unique_dates(dates: list[datetime]) -> dict[str:int]:
+    """Выбор уникальных дат в событиях"""
+    result = {}
+    for date in dates:
+        converted_date = convert_date(date)
+
+        if converted_date not in result.keys():
+            result[converted_date] = 1
+        else:
+            result[converted_date] += 1
+
+    return result
+
+
+

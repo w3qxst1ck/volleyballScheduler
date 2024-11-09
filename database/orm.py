@@ -1,3 +1,4 @@
+import datetime
 from typing import List
 
 from sqlalchemy import select, delete, update, text, and_
@@ -163,6 +164,24 @@ class AsyncOrm:
             result = await session.execute(query)
             rows = result.unique().scalars().all()
 
+            events = [schemas.EventRel.model_validate(row, from_attributes=True) for row in rows]
+            return events
+
+    @staticmethod
+    async def get_events_for_date(date: datetime.date, only_active: bool = True):
+        """Получение событий в определенную дату"""
+        async with async_session_factory() as session:
+            if only_active:
+                query = select(tables.Event)\
+                    .where(and_(tables.Event.date == date, tables.Event.active == True))\
+                    .options(joinedload(tables.Event.users_registered))
+            else:
+                query = select(tables.Event) \
+                    .where(tables.Event.date == date) \
+                    .options(joinedload(tables.Event.users_registered))
+
+            result = await session.execute(query)
+            rows = result.unique().scalars().all()
             events = [schemas.EventRel.model_validate(row, from_attributes=True) for row in rows]
             return events
 

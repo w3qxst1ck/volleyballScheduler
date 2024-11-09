@@ -1,3 +1,5 @@
+import datetime
+
 from aiogram.types import InlineKeyboardButton
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from functools import wraps
@@ -44,6 +46,28 @@ def events_keyboard(events: list[EventRel], user: User) -> InlineKeyboardBuilder
             registered = "✔️"
 
         keyboard.row(InlineKeyboardButton(text=f"{registered} {date} {event.title}", callback_data=f"user-event_{event.id}"))
+
+    keyboard.adjust(1)
+    return keyboard
+
+
+@back_button("user-menu")
+def dates_keyboard(dates: dict[str:int]) -> InlineKeyboardBuilder:
+    """Клавиатура со всеми датами мероприятий"""
+    keyboard = InlineKeyboardBuilder()
+
+    for key in dates.keys():
+        count = dates[key]
+        if count == 1:
+            events = "событие"
+        elif count in [2, 3, 4]:
+            events = "события"
+        else:
+            events = "событий"
+
+        keyboard.row(
+
+            InlineKeyboardButton(text=f"{key} - {count} {events}", callback_data=f"events-date_{key}"))
 
     keyboard.adjust(1)
     return keyboard
