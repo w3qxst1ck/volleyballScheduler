@@ -1,6 +1,17 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
+LEVELS = {
+    "beginner": "Новичок",
+    "beginner-plus": "🏐 Новичок+",
+    "lite": "🥉 Лайт",
+    "lite-plus": "🥈 Лайт +",
+    "lite-plus-plus": "🥇 Лайт ++",
+    "medium": "🏅 Медиум",
+    "hard": "🏆 Хард",
+}
+
+
 class Database(BaseSettings):
     postgres_user: str
     postgres_password: str
@@ -20,6 +31,7 @@ class Settings(BaseSettings):
     bot_token: str
     admins: list
     main_admin: str
+    levels: dict = LEVELS
     db: Database = Database()
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")

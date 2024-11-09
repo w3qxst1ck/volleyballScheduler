@@ -44,6 +44,8 @@ class Event(Base):
     date: Mapped[datetime.datetime] = mapped_column(server_default=text("TIMEZONE('utc', now())"))
     places: Mapped[int]
     active: Mapped[bool] = mapped_column(default=True)
+    level: Mapped[str]
+    price: Mapped[int]
 
     paid_confirm: Mapped[bool] = mapped_column(default=False)
     paid: Mapped[bool] = mapped_column(default=False)

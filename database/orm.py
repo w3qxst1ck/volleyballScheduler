@@ -1,9 +1,11 @@
 import datetime
 from typing import List
 
+import pytz
 from sqlalchemy import select, delete, update, text, and_
 from sqlalchemy.orm import joinedload, selectinload
 
+import settings
 from database.database import async_engine, async_session_factory
 from database.tables import Base
 from database import schemas
@@ -154,6 +156,22 @@ class AsyncOrm:
             return events
 
     @staticmethod
+    async def get_last_events() -> List[schemas.Event]:
+        """Получение последних tables.Event за 3 дня"""
+        start_date = datetime.datetime.now(tz=pytz.timezone("Europe/Moscow")).date()
+        end_date = (datetime.datetime.now(tz=pytz.timezone("Europe/Moscow")) - datetime.timedelta(days=3)).date()
+
+        async with async_session_factory() as session:
+            query = select(tables.Event) \
+                    .filter(tables.Event.date.between(end_date, start_date)) \
+                    .order_by(tables.Event.date.asc())
+            result = await session.execute(query)
+            rows = result.scalars().all()
+
+            events = [schemas.Event.model_validate(row, from_attributes=True) for row in rows]
+            return events
+
+    @staticmethod
     async def get_events_with_users(only_active: bool = True) -> List[schemas.EventRel]:
         """Получение всех tables.Event со связанными tables.User"""
         async with async_session_factory() as session:
@@ -173,11 +191,11 @@ class AsyncOrm:
         async with async_session_factory() as session:
             if only_active:
                 query = select(tables.Event)\
-                    .where(and_(tables.Event.date == date, tables.Event.active == True))\
+                    .filter(and_(tables.Event.date == date, tables.Event.active == True))\
                     .options(joinedload(tables.Event.users_registered))
             else:
                 query = select(tables.Event) \
-                    .where(tables.Event.date == date) \
+                    .filter(tables.Event.date == date) \
                     .options(joinedload(tables.Event.users_registered))
 
             result = await session.execute(query)
@@ -207,6 +225,18 @@ class AsyncOrm:
                     (tables.EventsUsers.user_id == user_id) &
                     (tables.EventsUsers.event_id == event_id)
             )
+
+            await session.execute(query)
+            await session.flush()
+            await session.commit()
+
+    @staticmethod
+    async def set_level_for_user(user_id: int, level: str):
+        """Назначение уровня пользователю"""
+        async with async_session_factory() as session:
+            query = update(tables.User)\
+                .where(tables.User.id == user_id)\
+                .values(level=level)
 
             await session.execute(query)
             await session.flush()

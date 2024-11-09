@@ -20,13 +20,15 @@ class EventAdd(BaseModel):
     title: str
     date: datetime.datetime
     places: int
+    paid_confirm: bool = False
+    paid: bool = False
+    level: str
+    price: int
 
 
 class Event(EventAdd):
     id: int
     active: bool
-    paid_confirm: bool = False
-    paid: bool = False
 
 
 class UserRel(User):

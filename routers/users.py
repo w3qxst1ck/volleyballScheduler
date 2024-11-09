@@ -32,7 +32,7 @@ async def start_handler(message: types.Message, state: FSMContext) -> None:
 
         # /menu handler
         else:
-            await message.answer("Выберите действие", reply_markup=kb.menu_users_keyboard().as_markup())
+            await message.answer("Главное меню", reply_markup=kb.menu_users_keyboard().as_markup())
 
     # новый пользователь
     else:
@@ -69,8 +69,8 @@ async def add_user_handler(message: types.Message, state: FSMContext) -> None:
             pass
         await state.clear()
 
-        await message.answer("Вы успешно зарегистрированы!")
-        await message.answer("Выберите действие", reply_markup=kb.menu_users_keyboard().as_markup())
+        await message.answer("Вы успешно зарегистрированы ✅")
+        await message.answer("Главное меню", reply_markup=kb.menu_users_keyboard().as_markup())
 
     # ошибка введения данных
     except utils.FullnameException:
@@ -123,7 +123,6 @@ async def user_events_dates_handler(callback: types.CallbackQuery) -> None:
     print(events)
 
 
-
 @router.callback_query(lambda callback: callback.data.split("_")[0] == "user-event")
 async def user_event_handler(callback: types.CallbackQuery) -> None:
     """Вывод мероприятия для пользователя из общего списка 'Events'"""
@@ -153,7 +152,7 @@ async def user_event_registered_handler(callback: types.CallbackQuery) -> None:
     user_with_events = await AsyncOrm.get_user_with_events(str(callback.from_user.id), only_active=True)
 
     if not user_with_events.events:
-        msg = "Вы пока никуда не зарегистрировались\n\nВы можете это сделать во вкладке \n\"🗓️ Мероприятия\""
+        msg = "Вы пока никуда не зарегистрировались\n\nВы можете это сделать во вкладке \n\"🗓️ Все мероприятия\""
     else:
         msg = "Вы являетесь участником следующих мероприятий:"
 

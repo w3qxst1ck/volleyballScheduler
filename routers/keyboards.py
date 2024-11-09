@@ -7,6 +7,7 @@ from typing import Callable
 
 from database.schemas import Event, User, EventRel
 from routers.utils import convert_date
+from settings import settings
 
 
 def back_button(callback_data: str):
@@ -25,7 +26,7 @@ def back_button(callback_data: str):
 def menu_users_keyboard() -> InlineKeyboardBuilder:
     """Основное меню для пользователей"""
     keyboard = InlineKeyboardBuilder()
-    keyboard.row(InlineKeyboardButton(text="🗓️ Мероприятия", callback_data=f"menu_events"))
+    keyboard.row(InlineKeyboardButton(text="🗓️ Все мероприятия", callback_data=f"menu_events"))
     keyboard.row(InlineKeyboardButton(text="👤 Профиль", callback_data=f"menu_profile"))
     keyboard.row(InlineKeyboardButton(text="🏐 Мои мероприятия", callback_data=f"menu_my-events"))
 
@@ -140,6 +141,57 @@ def yes_no_keyboard_for_admin_delete_user_from_event(event_id: int, user_id: int
     keyboard.row(InlineKeyboardButton(text="Да", callback_data=f"admin-event-user-delete_{event_id}_{user_id}"))
     keyboard.row(InlineKeyboardButton(text="Нет", callback_data=f"admin-event_{event_id}"))
     keyboard.adjust(2)
+
+    return keyboard
+
+
+def events_levels_keyboard_admin(events: list[Event]) -> InlineKeyboardBuilder:
+    """Клавиатура с мероприятиями для вывода админу для выставления уровней"""
+    keyboard = InlineKeyboardBuilder()
+
+    for event in events:
+        date = convert_date(event.date)
+        keyboard.row(InlineKeyboardButton(text=f"{date} {event.title}", callback_data=f"admin-event-levels_{event.id}"))
+
+    keyboard.adjust(1)
+    return keyboard
+
+
+def event_levels_card_keyboard_admin(event: EventRel) -> InlineKeyboardBuilder:
+    """Выбор участника события для выставления уровня"""
+    keyboard = InlineKeyboardBuilder()
+
+    if event.users_registered:
+        for idx, user in enumerate(event.users_registered, start=1):
+            keyboard.row(InlineKeyboardButton(text=f"{idx}", callback_data=f"admin-event-level-user_{event.id}_{user.id}"))
+        keyboard.adjust(3)
+
+    keyboard.row(InlineKeyboardButton(text=f"🔙 назад", callback_data="back-admin-levels"))
+    return keyboard
+
+
+def event_levels_keyboards(event_id: int, user_id: int) -> InlineKeyboardBuilder:
+    """Инлайн клавиатура с уровнями для выставления пользователю"""
+    keyboard = InlineKeyboardBuilder()
+
+    for k, v in settings.levels.items():
+        keyboard.row(InlineKeyboardButton(text=f"{v}", callback_data=f"admin-add-user-level_{event_id}_{user_id}_{k}"))
+    keyboard.adjust(2)
+
+    keyboard.row(InlineKeyboardButton(text=f"🔙 назад", callback_data=f"admin-event-levels_{event_id}"))
+
+    return keyboard
+
+
+def levels_keyboards() -> InlineKeyboardBuilder:
+    """Инлайн клавиатура с уровнями"""
+    keyboard = InlineKeyboardBuilder()
+
+    for k, v in settings.levels.items():
+        keyboard.row(InlineKeyboardButton(text=f"{v}", callback_data=f"admin-add-event-level_{k}"))
+    keyboard.adjust(2)
+
+    keyboard.row(InlineKeyboardButton(text="❌ Отмена", callback_data="button_cancel"))
 
     return keyboard
 

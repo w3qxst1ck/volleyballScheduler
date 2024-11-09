@@ -24,13 +24,9 @@ async def update_events():
 async def notify_users_about_events(bot: aiogram.Bot):
     """Напоминание пользователей о событии, на которое они записались (за день до события)"""
     events = await AsyncOrm.get_events_with_users()
+
     for event in events:
-        print(event)
-        print("check date", (datetime.datetime.now(tz=pytz.timezone("Europe/Moscow")) + datetime.timedelta(days=1)).date())
-        print(f"event date {event.date.date()}")
-        print((datetime.datetime.now(tz=pytz.timezone("Europe/Moscow")) + datetime.timedelta(days=1)).date() == event.date.date())
-        if (datetime.datetime.now(tz=pytz.timezone("Europe/Moscow")) +
-            datetime.timedelta(days=1)).date() == event.date.date():
+        if (datetime.datetime.now(tz=pytz.timezone("Europe/Moscow")) + datetime.timedelta(days=1)).date() == event.date.date():
             for user in event.users_registered:
                 try:
                     msg = ms.notify_message(event)

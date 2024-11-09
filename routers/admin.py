@@ -21,7 +21,7 @@ router.message.middleware.register(CheckIsAdminMiddleware(settings.admins))
 
 # GET EVENTS
 @router.message(Command("events"))
-@router.callback_query(lambda callback:callback.data == "back-admin-events")
+@router.callback_query(lambda callback: callback.data == "back-admin-events")
 async def get_events_handler(message: types.Message | types.CallbackQuery) -> None:
     """Получение всех событий"""
     events = await AsyncOrm.get_events()
@@ -32,17 +32,20 @@ async def get_events_handler(message: types.Message | types.CallbackQuery) -> No
         await message.message.edit_text("События", reply_markup=kb.events_keyboard_admin(events).as_markup())
 
 
-@router.callback_query(lambda callback: callback.data != "cancel" and callback.data.split("_")[0] == "admin-event")
+@router.callback_query(lambda callback: callback.data.split("_")[0] == "admin-event")
 async def event_info_handler(callback: types.CallbackQuery) -> None:
     """Карточка события для админа"""
     event_id = int(callback.data.split("_")[1])
     event = await AsyncOrm.get_event_with_users(event_id)
     msg = ms.event_card_for_admin_message(event)
 
-    await callback.message.edit_text(msg, reply_markup=kb.event_card_keyboard_admin(event).as_markup())
+    await callback.message.edit_text(
+        msg,
+        reply_markup=kb.event_card_keyboard_admin(event).as_markup()
+    )
 
 
-@router.callback_query(lambda callback: callback.data != "cancel" and callback.data.split("_")[0] == "admin-event-user")
+@router.callback_query(lambda callback: callback.data.split("_")[0] == "admin-event-user")
 async def event_info_handler(callback: types.CallbackQuery) -> None:
     """Предложение удалить пользователя в событии для админа"""
     event_id = int(callback.data.split("_")[1])
@@ -52,7 +55,7 @@ async def event_info_handler(callback: types.CallbackQuery) -> None:
                                      reply_markup=kb.yes_no_keyboard_for_admin_delete_user_from_event(event_id, user_id).as_markup())
 
 
-@router.callback_query(lambda callback: callback.data != "cancel" and callback.data.split("_")[0] == "admin-event-user-delete")
+@router.callback_query(lambda callback: callback.data.split("_")[0] == "admin-event-user-delete")
 async def event_info_handler(callback: types.CallbackQuery, bot: Bot) -> None:
     """Удаление пользователя в событии для админа"""
     event_id = int(callback.data.split("_")[1])
@@ -198,7 +201,7 @@ async def add_event_date_handler(message: types.Message, state: FSMContext) -> N
 
 @router.message(AddEventFSM.places)
 async def add_event_date_handler(message: types.Message, state: FSMContext) -> None:
-    """Сохранение time, выбор places"""
+    """Сохранение places, выбор level"""
     places_str = message.text
     data = await state.get_data()
 
@@ -214,25 +217,130 @@ async def add_event_date_handler(message: types.Message, state: FSMContext) -> N
         await state.update_data(prev_mess=msg)
         return
 
-    # если количество мест правильное, то создаем event
-    date_time_str = f"{data['date']} {data['time']}"
-    date_time = datetime.strptime(date_time_str, "%d.%m.%Y %H:%M")
-    event = schemas.EventAdd(
-        type=data["type"],
-        title=data["title"],
-        date=date_time,
-        places=int(places_str)
-    )
-    await AsyncOrm.add_event(event)
+    # если количество мест правильное
+    await state.update_data(places=int(places_str))
 
     # удаление прошлого сообщения
-    data = await state.get_data()
     try:
         await data["prev_mess"].delete()
     except TelegramBadRequest:
         pass
 
-    await message.answer(f"Событие <b>\"{event.title}\"</b> в <b>{date_time_str}</b> успешно создано ✅")
+    await state.set_state(AddEventFSM.level)
+    msg = await message.answer(f"Выберите минимальный уровень участников мероприятия",
+                         reply_markup=kb.levels_keyboards().as_markup())
+    await state.update_data(prev_mess=msg)
+
+
+@router.callback_query(AddEventFSM.level, lambda callback: callback.data.split("_")[0] == "admin-add-event-level")
+async def add_event_date_handler(callback: types.CallbackQuery, state: FSMContext) -> None:
+    """Сохранение level, выбор price"""
+    level = callback.data.split("_")[1]
+    await state.update_data(level=level)
+    await state.set_state(AddEventFSM.price)
+
+    await callback.message.edit_text("Введите цифрой цену мероприятия", reply_markup=kb.cancel_keyboard().as_markup())
+
+
+@router.message(AddEventFSM.price)
+async def add_event_date_handler(message: types.Message, state: FSMContext) -> None:
+    """Сохранение price, создание Event"""
+    price_str = message.text
+    data = await state.get_data()
+
+    # неправильная цена
+    if not utils.is_valid_price(price_str):
+        try:
+            await data["prev_mess"].delete()
+        except TelegramBadRequest:
+            pass
+        msg = await message.answer("Введена некорректная цена\n\n"
+                                   "Необходимо указать <b>число</b> без букв, знаков препинания и других символов "
+                                   "(например 500, 1000 ил 1500)", reply_markup=kb.cancel_keyboard().as_markup())
+        await state.update_data(prev_mess=msg)
+        return
+
+    # правильная цена
+    date_time_str = f"{data['date']} в {data['time']}"
+    date_time = datetime.strptime(f"{data['date']} {data['time']}", "%d.%m.%Y %H:%M")
+    event = schemas.EventAdd(
+        type=data["type"],
+        title=data["title"],
+        date=date_time,
+        places=data["places"],
+        level=data["level"],
+        price=int(price_str)
+    )
+    await AsyncOrm.add_event(event)
+
+    # удаление сообщения
+    try:
+        await data["prev_mess"].delete()
+    except TelegramBadRequest:
+        pass
+
+    await state.clear()
+    await message.answer(f"Событие <b>\"{event.title}\"</b> <b>{date_time_str}</b> успешно создано ✅")
+
+
+# SET LEVEL
+@router.message(Command("levels"))
+@router.callback_query(lambda callback: callback.data == "back-admin-levels")
+async def choose_event_for_set_level_handler(message: types.Message) -> None:
+    """Выбор мероприятия для назначения уровня пользователям"""
+    events = await AsyncOrm.get_last_events()
+
+    if type(message) == types.Message:
+        await message.answer("Мероприятия за последние 3 дня", reply_markup=kb.events_levels_keyboard_admin(events).as_markup())
+    else:
+        await message.message.edit_text("Мероприятия за последние 3 дня", reply_markup=kb.events_levels_keyboard_admin(events).as_markup())
+
+
+@router.callback_query(lambda callback: callback.data.split("_")[0] == "admin-event-levels")
+async def event_levels_info_handler(callback: types.CallbackQuery) -> None:
+    """Карточка события админа для выставления уровней"""
+    event_id = int(callback.data.split("_")[1])
+    event = await AsyncOrm.get_event_with_users(event_id)
+    msg = ms.event_levels_card_for_admin_message(event)
+
+    await callback.message.edit_text(
+        msg,
+        reply_markup=kb.event_levels_card_keyboard_admin(event).as_markup()
+    )
+
+
+@router.callback_query(lambda callback: callback.data.split("_")[0] == "admin-event-level-user")
+async def event_level_choose_handler(callback: types.CallbackQuery) -> None:
+    """Выбор уровня для конкретного участника"""
+    event_id = int(callback.data.split("_")[1])
+    user_id = int(callback.data.split("_")[2])
+    user = await AsyncOrm.get_user_by_id(user_id)
+
+    if user.level:
+        msg = f"Сейчас <b>{user.firstname} {user.lastname}</b> имеет уровень <b>{settings.levels[user.level]}</b>\n\n"
+    else:
+        msg = f"Сейчас <b>{user.firstname} {user.lastname} не имеет уровня</b>\n\n"
+
+    msg += "Выберите уровень, который хотите установить пользователю"
+    await callback.message.edit_text(msg, reply_markup=kb.event_levels_keyboards(event_id, user_id).as_markup())
+
+
+@router.callback_query(lambda callback: callback.data.split("_")[0] == "admin-add-user-level")
+async def event_level_choose_handler(callback: types.CallbackQuery) -> None:
+    """Выбор уровня для конкретного участника"""
+    event_id = int(callback.data.split("_")[1])
+    user_id = int(callback.data.split("_")[2])
+    level = callback.data.split("_")[3]
+
+    await AsyncOrm.set_level_for_user(user_id, level)
+
+    event = await AsyncOrm.get_event_with_users(event_id)
+    user = await AsyncOrm.get_user_by_id(user_id)
+
+    await callback.message.edit_text(f"Уровень пользователя <b>{user.firstname} {user.lastname}</b> обновлен на {settings.levels[level]}")
+
+    msg = ms.event_levels_card_for_admin_message(event)
+    await callback.message.answer(msg, reply_markup=kb.event_levels_card_keyboard_admin(event).as_markup())
 
 
 #

@@ -5,7 +5,7 @@ from settings import settings
 
 def user_profile_message(user: User) -> str:
     """Сообщение с профилем пользователя"""
-    user_lvl = "🏅 Уровень:" + user.level if user.level else "🏅 Уровень: уровень еще не определен"
+    user_lvl = f"🔝 Уровень: " + settings.levels[user.level] if user.level else f"🔝 Уровень: уровень еще не определен"
     message = f"Ваш профиль\n\n👤 {user.firstname} {user.lastname}\n{user_lvl}"
 
     return message
@@ -38,18 +38,45 @@ def event_card_for_admin_message(event: EventRel) -> str:
     message = f"📅 <b>{date} {time}</b>\n\n" \
               f"<b>\"{event.type}\"</b>\n" \
               f"{event.title}\n" \
+              f"📈 Минимальный уровень: {settings.levels[event.level]}\n" \
+              f"💰 Цена: {event.price} руб.\n" \
               f"👥 Участников: {user_registered_count}/{event.places} (<b>свободных мест {event.places - user_registered_count}</b>)\n\n"
 
     if event.users_registered:
         message += "Участники:\n"
         for idx, user in enumerate(event.users_registered, 1):
-            message += f"<b>{idx}.</b> <a href='tg://user?id={user.tg_id}'>{user.firstname} {user.lastname}</a> <b>{'(🏅 ' + user.level + ')' if user.level else ''}</b>\n"
+            message += f"<b>{idx}.</b> <a href='tg://user?id={user.tg_id}'>{user.firstname} {user.lastname}</a> " \
+                       f"{f'({settings.levels[user.level]})' if user.level else ''}\n"
 
         message += "\nДля перехода в диалог с участником нажмите на его имя\n" \
-                   "Чтобы удалить участника с события нажмите кнопку с соответствующим номером участника"
+                   "Чтобы удалить участника с события, нажмите кнопку с соответствующим номером участника"
     # если участников нет
     else:
         message += "<b>Участников пока нет</b>"
+
+    return message
+
+
+def event_levels_card_for_admin_message(event: EventRel) -> str:
+    """Информация о событии для выставления уровней"""
+    date = convert_date(event.date)
+    time = convert_time(event.date)
+
+    message = f"📅 <b>{date} {time}</b>\n\n" \
+              f"<b>\"{event.type}\"</b>\n" \
+              f"{event.title}\n\n" \
+
+    if event.users_registered:
+        message += "Участники:\n"
+        for idx, user in enumerate(event.users_registered, 1):
+            message += f"<b>{idx}.</b> {user.firstname} {user.lastname} " \
+                       f"{f'({settings.levels[user.level]})' if user.level else ''}\n"
+
+        message += "\nЧтобы выставить уровень участника, нажмите кнопку с соответствующим номером участника"
+
+    # если участников нет
+    else:
+        message += "<b>Участников нет</b>"
 
     return message
 

@@ -1,6 +1,8 @@
 from datetime import datetime
 from typing import List
 
+import pytz
+
 
 class FullnameException(Exception):
     """Ошибка валидации имени и фамилии"""
@@ -47,7 +49,7 @@ def is_valid_date(date: str) -> bool:
     """Проверка валидности даты"""
     try:
         result = datetime.strptime(date, "%d.%m.%Y").date()
-        if result < datetime.now().date():
+        if result <= datetime.now(tz=pytz.timezone("Europe/Moscow")).date():
             return False
     except ValueError:
         return False
@@ -85,6 +87,19 @@ def is_valid_places(places: str) -> bool:
         return False
 
     if places < 0:
+        return False
+
+    return True
+
+
+def is_valid_price(price: str) -> bool:
+    """Проверка валидности цены"""
+    try:
+        price = int(price)
+    except ValueError:
+        return False
+
+    if price < 0:
         return False
 
     return True

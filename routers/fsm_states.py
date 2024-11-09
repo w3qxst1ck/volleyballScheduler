@@ -11,3 +11,5 @@ class AddEventFSM(StatesGroup):
     date = State()
     time = State()
     places = State()
+    level = State()
+    price = State()
