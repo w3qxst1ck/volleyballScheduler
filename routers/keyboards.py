@@ -156,6 +156,19 @@ def main_keyboard_or_my_events() -> InlineKeyboardBuilder:
     return keyboard
 
 
+def confirm_decline_keyboard(event_id: int, user_id: int) -> InlineKeyboardBuilder:
+    """Клавиатура для подтверждения или отклонения платежа админом"""
+    """Клавиатура с кнопкой подтверждения оплаты для админа"""
+    keyboard = InlineKeyboardBuilder()
+    keyboard.row(
+        InlineKeyboardButton(
+            text="Подтвердить ✅", callback_data=f"admin-payment_ok_{event_id}_{user_id}"),
+        InlineKeyboardButton(
+            text="Отклонить ❌", callback_data=f"admin-payment_cancel_{event_id}_{user_id}"),
+    )
+    return keyboard
+
+
 # ADMIN KEYBOARDS
 def events_keyboard_admin(events: list[Event]) -> InlineKeyboardBuilder:
     """Клавиатура с мероприятиями для вывода админу"""

@@ -185,6 +185,7 @@ class AsyncOrm:
             events = [schemas.EventRel.model_validate(row, from_attributes=True) for row in rows]
             return events
 
+    # TODO неправильная выборка из дат
     @staticmethod
     async def get_events_for_date(date: datetime.date) -> list[schemas.EventRel]:
         """Получение событий в определенную дату"""
@@ -193,7 +194,7 @@ class AsyncOrm:
 
         async with async_session_factory() as session:
             query = select(tables.Event)\
-                .filter(tables.Event.date.between(date_before, date_after)) \
+                .filter(and_(tables.Event.date > date_before), tables.Event.date < date_after) \
                 .options(joinedload(tables.Event.users_registered))                \
                 .order_by(tables.Event.date.asc())
 
@@ -265,6 +266,7 @@ class AsyncOrm:
                 paid=True
             )
             session.add(payment)
+
             await session.flush()
             await session.commit()
 
@@ -298,6 +300,22 @@ class AsyncOrm:
 
             payments = [schemas.PaymentsEventsUsers.model_validate(row, from_attributes=True) for row in rows]
             return payments
+
+    @staticmethod
+    async def update_payment_status(event_id: int, user_id: int) -> None:
+        """Изменение статуса оплаты после подтверждения оплаты"""
+
+        async with async_session_factory() as session:
+            query = update(tables.PaymentsUserEvent) \
+                .filter(and_(
+                        tables.PaymentsUserEvent.event_id == event_id,
+                        tables.PaymentsUserEvent.user_id == user_id,
+                )) \
+                .values(paid_confirm=True)
+
+            await session.execute(query)
+            await session.flush()
+            await session.commit()
 
 
 

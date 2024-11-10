@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from aiogram import Router, types
+from aiogram import Router, types, Bot
 from aiogram.exceptions import TelegramBadRequest
 from aiogram.filters import Command, StateFilter
 from aiogram.fsm.context import FSMContext
@@ -11,6 +11,7 @@ from routers.fsm_states import RegisterUserFSM
 from database import schemas
 from database.orm import AsyncOrm
 from routers import utils
+import settings
 
 router = Router()
 router.message.middleware.register(CheckPrivateMessageMiddleware())
@@ -180,17 +181,30 @@ async def register_user_on_event(callback: types.CallbackQuery) -> None:
 
 
 @router.callback_query(lambda callback: callback.data.split("_")[0] == "paid")
-async def register_paid_event(callback: types.CallbackQuery) -> None:
+async def register_paid_event(callback: types.CallbackQuery, bot: Bot) -> None:
     """Подтверждение оплаты от пользователя"""
     user_id = int(callback.data.split("_")[1])
     event_id = int(callback.data.split("_")[2])
 
+    # создание платежа в БД
     await AsyncOrm.create_payments(user_id, event_id)
 
     msg = "Дождитесь подтверждения оплаты от администратора\n\n" \
               "Вы можете отслеживать статус оплаты во вкладке \"🏐 Мои мероприятия\""
 
-    # TODO написать админу что user оплатил и попросить подтверждение
+    # оповещение администратора
+    user = await AsyncOrm.get_user_by_id(user_id)
+    event = await AsyncOrm.get_event_by_id(event_id)
+
+    msg_to_admin = f"Пользователь <b>{user.firstname} {user.lastname}</b> оплатил \"{event.type} {event.title}\" " \
+                   f"на сумму {event.price} руб. \n\nПодтвердите или отклоните оплату"
+    await bot.send_message(
+        settings.settings.admins[0],
+        msg_to_admin,
+        reply_markup=kb.confirm_decline_keyboard(event_id, user_id).as_markup()
+    )
+
+    # TODO что делать с теми кому оплату не подтвердили
     # TODO если админ подтвердил сделать запись в таблице EventsUsers
     # TODO как часто чистить оплаты
 

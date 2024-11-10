@@ -343,3 +343,38 @@ async def event_level_choose_handler(callback: types.CallbackQuery) -> None:
     msg = ms.event_levels_card_for_admin_message(event)
     await callback.message.answer(msg, reply_markup=kb.event_levels_card_keyboard_admin(event).as_markup())
 
+
+# PAYMENTS
+@router.callback_query(lambda callback: callback.data.split("_")[0] == "admin-payment")
+async def confirm_payment(callback: types.CallbackQuery, bot: Bot) -> None:
+    """Подтверждение оплаты от админа"""
+    confirm = callback.data.split("_")[1]
+
+    event_id = int(callback.data.split("_")[2])
+    user_id = int(callback.data.split("_")[3])
+
+    event = await AsyncOrm.get_event_by_id(event_id)
+    user = await AsyncOrm.get_user_by_id(user_id)
+
+    if confirm == "ok":
+        # подтверждение оплаты
+        await AsyncOrm.update_payment_status(event_id, user_id)
+        # сообщение админу
+        await callback.message.edit_text(callback.message.text)
+        await callback.message.answer("Оплата подтверждена ✅\nПользователь записан на мероприятие")
+
+        # сообщение пользователю
+        date = utils.convert_date(event.date)
+        time = utils.convert_time(event.date)
+        msg = f"Оплата прошла успешно ✅\n\nВы записаны на \"{event.type} {event.title} {date} в {time}\""
+        await bot.send_message(user.tg_id, msg)
+
+    else:
+        # сообщение админу
+        await callback.message.edit_text(callback.message.text)
+        await callback.message.answer("Оплата отклонена ❌\nОповещение направлено пользователю")
+
+        # сообщение пользователю
+        msg = f"Администратор оплату не подтвердил ❌\n\n" \
+                       f"Вы можете связаться с администрацией канала\n@{settings.main_admin}"
+        await bot.send_message(user.tg_id, msg)
