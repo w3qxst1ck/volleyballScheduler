@@ -33,6 +33,10 @@ class User(Base):
         secondary="events_users",
     )
 
+    payments: Mapped[list["PaymentsUserEvent"]] = relationship(
+        back_populates="user",
+    )
+
 
 class Event(Base):
     """Таблица для событий"""
@@ -47,12 +51,16 @@ class Event(Base):
     level: Mapped[str]
     price: Mapped[int]
 
-    paid_confirm: Mapped[bool] = mapped_column(default=False)
-    paid: Mapped[bool] = mapped_column(default=False)
+    paid_confirm: Mapped[bool] = mapped_column(default=False)   # TODO убрать
+    paid: Mapped[bool] = mapped_column(default=False)   # TODO убрать
 
     users_registered: Mapped[list["User"]] = relationship(
         back_populates="events",
         secondary="events_users",
+    )
+
+    payments: Mapped[list["PaymentsUserEvent"]] = relationship(
+        back_populates="event",
     )
 
 
@@ -72,6 +80,21 @@ class EventsUsers(Base):
         primary_key=True
     )
 
+
+class PaymentsUserEvent(Base):
+    """Записи пользователей на мероприятия"""
+
+    __tablename__ = "payments"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    paid: Mapped[bool] = mapped_column(default=False)   # True если пользователь нажал "Оплатил"
+    paid_confirm: Mapped[bool] = mapped_column(default=False)   # True если админ подтвердил платеж
+
+    event_id: Mapped[int] = mapped_column(ForeignKey("events.id", ondelete="CASCADE"))
+    event: Mapped["Event"] = relationship(back_populates="payments")
+
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    user: Mapped["User"] = relationship(back_populates="payments")
 
 
 

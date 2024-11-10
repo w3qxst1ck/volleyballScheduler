@@ -19,7 +19,7 @@ router.callback_query.middleware.register(CheckPrivateMessageMiddleware())
 
 # REGISTRATION
 @router.message(Command("start"))
-@router.message(Command("menu"))
+# @router.message(Command("menu"))
 async def start_handler(message: types.Message, state: FSMContext) -> None:
     """Start message, начало RegisterUserFsm"""
     tg_id = str(message.from_user.id)
@@ -90,14 +90,19 @@ async def add_user_handler(message: types.Message, state: FSMContext) -> None:
         await state.update_data(prev_mess=msg)
 
 
+@router.message(Command("menu"))
 @router.callback_query(lambda callback: callback.data.split("_")[1] == "user-menu")
 async def back_menu_handler(callback: types.CallbackQuery) -> None:
     """Главное меню пользователя"""
-    await callback.message.edit_text("Выберите действие", reply_markup=kb.menu_users_keyboard().as_markup())
+    if type(callback) == types.Message:
+        await callback.answer("Главное меню", reply_markup=kb.menu_users_keyboard().as_markup())
+
+    else:
+        await callback.message.edit_text("Главное меню", reply_markup=kb.menu_users_keyboard().as_markup())
 
 
 # USER EVENTS
-@router.callback_query(lambda callback: callback.data == "menu_events")
+@router.callback_query(lambda callback: callback.data.split("_")[1] == "all-events")
 async def user_events_dates_handler(callback: types.CallbackQuery) -> None:
     """Вывод дат с мероприятиями мероприятий"""
     # events = await AsyncOrm.get_events_with_users(only_active=True)
@@ -106,8 +111,7 @@ async def user_events_dates_handler(callback: types.CallbackQuery) -> None:
     events_dates = [event.date for event in events]
     unique_dates = utils.get_unique_dates(events_dates)
 
-    msg = "Выберите дату с мероприятием:" \
-          # "Мероприятия, на которые вы зарегистрированы, помечены '✔️'"
+    msg = "Даты с мероприятиями:"
     if not events:
         msg = "В ближайшее время нет мероприятий"
 
@@ -120,14 +124,21 @@ async def user_events_dates_handler(callback: types.CallbackQuery) -> None:
     date_str = callback.data.split("_")[1]
     date = datetime.strptime(date_str, "%d.%m.%Y").date()
 
-    events = await AsyncOrm.get_events_for_date(date, only_active=True)
-    print(events)
+    user = await AsyncOrm.get_user_by_tg_id(str(callback.from_user.id))
+    events = await AsyncOrm.get_events_for_date(date)
+
+    await callback.message.edit_text(
+        f"Мероприятия на <b>{date_str}</b>:\n\nМероприятия, на которые вы уже зарегистрированы, помечены '✔️'",
+        reply_markup=kb.events_keyboard(events, user).as_markup()
+    )
 
 
 @router.callback_query(lambda callback: callback.data.split("_")[0] == "user-event")
 async def user_event_handler(callback: types.CallbackQuery) -> None:
-    """Вывод мероприятия для пользователя из общего списка 'Events'"""
+    """Вывод карточки мероприятия для пользователя"""
+
     event_id = int(callback.data.split("_")[1])
+
     user = await AsyncOrm.get_user_by_tg_id(str(callback.from_user.id))
     event_with_users = await AsyncOrm.get_event_with_users(event_id)
 
@@ -138,87 +149,83 @@ async def user_event_handler(callback: types.CallbackQuery) -> None:
     else:
         registered = False
 
-    msg = ms.event_card_message(event_with_users, registered)
+    msg = ms.event_card_for_user_message(event_with_users, registered)
 
     await callback.message.edit_text(
         msg,
-        reply_markup=kb.event_card_keyboard(event_id, user.id, registered, "menu_events", "events").as_markup()
+        reply_markup=kb.event_card_keyboard(
+            event_id,
+            user.id,
+            registered,
+            f"events-date_{utils.convert_date(event_with_users.date)}",
+            "events"
+        ).as_markup()
     )
+
+
+@router.callback_query(lambda callback: callback.data.split("_")[0] == "reg-user")
+async def register_user_on_event(callback: types.CallbackQuery) -> None:
+    """Регистрация пользователя на мероприятие"""
+    event_id = int(callback.data.split("_")[1])
+    user_id = int(callback.data.split("_")[2])
+
+    # TODO сделать проверку на уровень
+
+    event = await AsyncOrm.get_event_by_id(event_id)
+    user = await AsyncOrm.get_user_by_id(user_id)
+
+    msg = ms.invoice_message_for_user(event)
+
+    await callback.message.edit_text(msg, reply_markup=kb.payment_confirm_keyboard(user, event).as_markup())
+
+
+@router.callback_query(lambda callback: callback.data.split("_")[0] == "paid")
+async def register_paid_event(callback: types.CallbackQuery) -> None:
+    """Подтверждение оплаты от пользователя"""
+    user_id = int(callback.data.split("_")[1])
+    event_id = int(callback.data.split("_")[2])
+
+    await AsyncOrm.create_payments(user_id, event_id)
+
+    msg = "Дождитесь подтверждения оплаты от администратора\n\n" \
+              "Вы можете отслеживать статус оплаты во вкладке \"🏐 Мои мероприятия\""
+
+    # TODO написать админу что user оплатил и попросить подтверждение
+    # TODO если админ подтвердил сделать запись в таблице EventsUsers
+    # TODO как часто чистить оплаты
+
+    await callback.message.edit_text(msg, reply_markup=kb.main_keyboard_or_my_events().as_markup())
+
 
 
 # USER ALREADY REGISTERED EVENTS
 @router.callback_query(lambda callback: callback.data.split("_")[1] == "my-events")
 async def user_event_registered_handler(callback: types.CallbackQuery) -> None:
     """Вывод мероприятий куда пользователь уже зарегистрирован"""
-    user_with_events = await AsyncOrm.get_user_with_events(str(callback.from_user.id), only_active=True)
-
-    if not user_with_events.events:
+    events = await AsyncOrm.get_payments_with_events_and_users(str(callback.from_user.id))
+    if not events:
         msg = "Вы пока никуда не зарегистрировались\n\nВы можете это сделать во вкладке \n\"🗓️ Все мероприятия\""
     else:
-        msg = "Вы являетесь участником следующих мероприятий:"
+        msg = "Мероприятия куда вы записывались:\n\n✅ - оплаченные мероприятия\n⏳ - ожидается подтверждение оплаты от администратора"
 
-    await callback.message.edit_text(msg, reply_markup=kb.user_events(user_with_events.events).as_markup())
+    await callback.message.edit_text(msg, reply_markup=kb.user_events(events).as_markup())
 
 
 @router.callback_query(lambda callback: callback.data.split("_")[0] == "my-events")
-async def event_info_handler(callback: types.CallbackQuery) -> None:
-    """Карточка событий"""
-    event_id = int(callback.data.split("_")[1])
-    event = await AsyncOrm.get_event_with_users(event_id)
+async def my_event_info_handler(callback: types.CallbackQuery) -> None:
+    """Карточка события в Моих мероприятиях"""
+    payment_id = int(callback.data.split("_")[1])
 
-    # проверяем участвует ли пользователь уже в этом событии
-    user = await AsyncOrm.get_user_by_tg_id(str(callback.from_user.id))
+    payment = await AsyncOrm.get_payment_by_id(payment_id)
+    event = await AsyncOrm.get_event_with_users(payment.event_id)
 
-    if user in event.users_registered:
-        registered = True
-    else:
-        registered = False
+    msg = ms.my_event_card_for_user_message(payment, event)
 
-    msg = ms.event_card_message(event, registered)
-
-    await callback.message.edit_text(
-        msg,
-        reply_markup=kb.event_card_keyboard(event_id, user.id, registered, "menu_my-events", "my-events").as_markup()
-    )
-
-
-@router.callback_query(lambda callback: callback.data.split("_")[0] in ["unreg-user", "reg-user"])
-async def reg_unreg_user_to_event_handler(callback: types.CallbackQuery) -> None:
-    """Регистрация и удаление пользователя из события"""
-    action = callback.data.split("_")[0]
-    event_id = int(callback.data.split("_")[1])
-    user_id = int(callback.data.split("_")[2])
-    from_ = callback.data.split("_")[3]
-
-    if action == "reg-user":
-        await AsyncOrm.add_user_to_event(event_id, user_id)
-        registered_status = True
-        await callback.message.edit_text("Вы зарегистрированы")
-
-    else:
-        await AsyncOrm.delete_user_from_event(event_id, user_id)
-        registered_status = False
-        await callback.message.edit_text("Регистрация на мероприятие отменена")
-
-    event = await AsyncOrm.get_event_with_users(event_id)
-
-    # при обращении из вкладки Мероприятия
-    if from_ == "events":
-        await callback.message.answer(
-            ms.event_card_message(event, user_registered=registered_status),
-            reply_markup=kb.event_card_keyboard(
-                event_id, user_id, registered_status, "menu_events", "events"
-            ).as_markup()
-        )
-
-    # при обращении из вкладки Мои мероприятия
-    else:
-        await callback.message.answer(
-            ms.event_card_message(event, user_registered=registered_status),
-            reply_markup=kb.event_card_keyboard(
-                event_id, user_id, registered_status, "menu_my-events", "my-events"
-            ).as_markup()
-        )
+    await callback.message.edit_text(msg, reply_markup=kb.my_event_card_keyboard(
+        paid_confirmed=payment.paid_confirm,
+        event_id=event.id,
+        user_id=payment.user_id
+    ).as_markup())
 
 
 # USER PROFILE

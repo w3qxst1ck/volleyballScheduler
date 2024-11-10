@@ -1,4 +1,4 @@
-from database.schemas import User, EventRel
+from database.schemas import User, EventRel, Event, PaymentsEventsUsers, Payment
 from routers.utils import convert_date, convert_time
 from settings import settings
 
@@ -11,22 +11,59 @@ def user_profile_message(user: User) -> str:
     return message
 
 
-def event_card_message(event: EventRel, user_registered: bool) -> str:
+def event_card_for_user_message(event: EventRel, user_registered: bool) -> str:
     """Информация о событии с его пользователями"""
     date = convert_date(event.date)
     time = convert_time(event.date)
 
     user_registered_count = len(event.users_registered)
 
-    message = f"📅 <b>{date} {time}</b>\n\n" \
+    message = f"📅 <b>{date} г.</b> в <b>{time}</b>\n\n" \
               f"<b>\"{event.type}\"</b>\n" \
               f"{event.title}\n" \
-              f"👥 Участников: {user_registered_count}/{event.places} (<b>свободных мест {event.places - user_registered_count}</b>)\n\n"
+              f"Уровень не ниже {settings.levels[event.level]}\n\n" \
+              f"👥 Участников: {user_registered_count}/{event.places} (<b>свободных мест {event.places - user_registered_count}</b>)\n\n" \
+              f"💸 Цена: <b>{event.price} руб.</b>\n\n"
     if user_registered:
         message += "✅ Вы <b>зарегистрированы</b> на это мероприятие"
     else:
         message += "❌ Вы еще <b>не зарегистрированы</b> на это мероприятие"
     return message
+
+
+def my_event_card_for_user_message(payment: Payment, event: EventRel) -> str:
+    """Карточка для события о вкладке мои события"""
+    date = convert_date(event.date)
+    time = convert_time(event.date)
+
+    user_registered_count = len(event.users_registered)
+
+    message = f"📅 <b>{date} г.</b> в <b>{time}</b>\n\n" \
+              f"<b>\"{event.type}\"</b>\n" \
+              f"{event.title}\n" \
+              f"Уровень не ниже {settings.levels[event.level]}\n\n" \
+              f"👥 Участников: {user_registered_count}/{event.places} (<b>свободных мест {event.places - user_registered_count}</b>)\n\n" \
+              f"💸 Цена: <b>{event.price} руб.</b>\n\n"
+
+    if payment.paid_confirm:
+        message += "✅ Вы <b>зарегистрированы</b> на это мероприятие"
+    else:
+        message += "⏳ Ожидается подтверждение платежа от администратора"
+
+    return message
+
+
+# PAYMENTS
+def invoice_message_for_user(event: Event) -> str:
+    """Сообщение о стоимости мероприятия"""
+    message = f"Цена мероприятия <b>\"{event.title} {convert_date(event.date)} в {convert_time(event.date)}\"</b> - <b>{event.price} руб.</b>\n\n"
+    message += f"Для записи необходимо выполнить оплату переводом {event.price} руб. по телефону: \n\n{settings.admin_phone}\n\n"
+    message +=  f"❗<b>ВАЖНО: в комментарии к оплате для подтверждения платежа необходимо указать имя пользователя (например Иван Иванов), " \
+               f"указанные в вашем профиле</b>\n\n" \
+               f"После выполнения оплаты нажмите кнопку <b>\"Оплатил\"</b>"
+    return message
+
+
 
 
 def event_card_for_admin_message(event: EventRel) -> str:

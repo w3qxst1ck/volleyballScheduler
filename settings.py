@@ -32,6 +32,7 @@ class Settings(BaseSettings):
     admins: list
     main_admin: str
     levels: dict = LEVELS
+    admin_phone: str
     db: Database = Database()
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")

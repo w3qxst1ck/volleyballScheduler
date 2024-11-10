@@ -186,20 +186,20 @@ class AsyncOrm:
             return events
 
     @staticmethod
-    async def get_events_for_date(date: datetime.date, only_active: bool = True):
+    async def get_events_for_date(date: datetime.date) -> list[schemas.EventRel]:
         """Получение событий в определенную дату"""
+        date_before = date - datetime.timedelta(days=1)
+        date_after = date + datetime.timedelta(days=1)
+
         async with async_session_factory() as session:
-            if only_active:
-                query = select(tables.Event)\
-                    .filter(and_(tables.Event.date == date, tables.Event.active == True))\
-                    .options(joinedload(tables.Event.users_registered))
-            else:
-                query = select(tables.Event) \
-                    .filter(tables.Event.date == date) \
-                    .options(joinedload(tables.Event.users_registered))
+            query = select(tables.Event)\
+                .filter(tables.Event.date.between(date_before, date_after)) \
+                .options(joinedload(tables.Event.users_registered))                \
+                .order_by(tables.Event.date.asc())
 
             result = await session.execute(query)
             rows = result.unique().scalars().all()
+
             events = [schemas.EventRel.model_validate(row, from_attributes=True) for row in rows]
             return events
 
@@ -254,6 +254,50 @@ class AsyncOrm:
             await session.flush()
             await session.commit()
 
+    # PAYMENTS
+    @staticmethod
+    async def create_payments(user_id: int, event_id: int):
+        """Создание записи с платежом от пользователя"""
+        async with async_session_factory() as session:
+            payment = tables.PaymentsUserEvent(
+                event_id=event_id,
+                user_id=user_id,
+                paid=True
+            )
+            session.add(payment)
+            await session.flush()
+            await session.commit()
+
+    @staticmethod
+    async def get_payment_by_id(payment_id: int) -> schemas.Payment:
+        """Получение оплаты по id"""
+        async with async_session_factory() as session:
+            query = select(tables.PaymentsUserEvent).where(tables.PaymentsUserEvent.id == payment_id)\
+                # .options(joinedload(tables.PaymentsUserEvent.event))\
+                # .options(joinedload(tables.PaymentsUserEvent.user))
+
+            result = await session.execute(query)
+            row = result.scalars().first()
+
+            payment = schemas.Payment.model_validate(row, from_attributes=True)
+            return payment
+
+    @staticmethod
+    async def get_payments_with_events_and_users(user_tg_id: str) -> list[schemas.PaymentsEventsUsers]:
+        """Получение оплаты по id"""
+        user = await AsyncOrm.get_user_by_tg_id(user_tg_id)
+
+        async with async_session_factory() as session:
+            query = select(tables.PaymentsUserEvent)\
+                .filter(and_(tables.PaymentsUserEvent.user_id == user.id,))\
+                .options(joinedload(tables.PaymentsUserEvent.event))\
+                .options(joinedload(tables.PaymentsUserEvent.user))
+
+            result = await session.execute(query)
+            rows = result.unique().scalars().all()
+
+            payments = [schemas.PaymentsEventsUsers.model_validate(row, from_attributes=True) for row in rows]
+            return payments
 
 
 

@@ -5,7 +5,7 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from functools import wraps
 from typing import Callable
 
-from database.schemas import Event, User, EventRel
+from database.schemas import Event, User, EventRel, PaymentsEventsUsers
 from routers.utils import convert_date
 from settings import settings
 
@@ -26,7 +26,7 @@ def back_button(callback_data: str):
 def menu_users_keyboard() -> InlineKeyboardBuilder:
     """Основное меню для пользователей"""
     keyboard = InlineKeyboardBuilder()
-    keyboard.row(InlineKeyboardButton(text="🗓️ Все мероприятия", callback_data=f"menu_events"))
+    keyboard.row(InlineKeyboardButton(text="🗓️ Все мероприятия", callback_data=f"menu_all-events"))
     keyboard.row(InlineKeyboardButton(text="👤 Профиль", callback_data=f"menu_profile"))
     keyboard.row(InlineKeyboardButton(text="🏐 Мои мероприятия", callback_data=f"menu_my-events"))
 
@@ -34,19 +34,19 @@ def menu_users_keyboard() -> InlineKeyboardBuilder:
     return keyboard
 
 
-@back_button("user-menu")
+@back_button("all-events")
 def events_keyboard(events: list[EventRel], user: User) -> InlineKeyboardBuilder:
     """Клавиатура с мероприятиями для вывода пользователю"""
     keyboard = InlineKeyboardBuilder()
 
     for event in events:
-        date = convert_date(event.date)
+        time = event.date.time().strftime("%H:%M")
 
         registered = ""
         if user in event.users_registered:
-            registered = "✔️"
+            registered = "✔️" + " "
 
-        keyboard.row(InlineKeyboardButton(text=f"{registered} {date} {event.title}", callback_data=f"user-event_{event.id}"))
+        keyboard.row(InlineKeyboardButton(text=f"{registered}{time} {event.title}", callback_data=f"user-event_{event.id}"))
 
     keyboard.adjust(1)
     return keyboard
@@ -60,11 +60,11 @@ def dates_keyboard(dates: dict[str:int]) -> InlineKeyboardBuilder:
     for key in dates.keys():
         count = dates[key]
         if count == 1:
-            events = "событие"
+            events = "мероприятие"
         elif count in [2, 3, 4]:
-            events = "события"
+            events = "мероприятия"
         else:
-            events = "событий"
+            events = "мероприятий"
 
         keyboard.row(
 
@@ -82,15 +82,34 @@ def user_profile_keyboard() -> InlineKeyboardBuilder:
 
 
 @back_button("user-menu")
-def user_events(events: list[Event]) -> InlineKeyboardBuilder:
+def user_events(payments: list[PaymentsEventsUsers]) -> InlineKeyboardBuilder:
     """Мероприятия куда пользователь зарегистрирован"""
     keyboard = InlineKeyboardBuilder()
-    for event in events:
-        date = convert_date(event.date)
-        keyboard.row(InlineKeyboardButton(text=f"{date} {event.title}", callback_data=f"my-events_{event.id}"))
+
+    for payment in payments:
+        date = convert_date(payment.event.date)
+        status = "✅️" if payment.paid_confirm else "⏳"
+
+        keyboard.row(InlineKeyboardButton(
+            text=f"{status} {date} {payment.event.title}",
+            callback_data=f"my-events_{payment.id}")
+        )
 
     keyboard.adjust(1)
     return keyboard
+
+
+def my_event_card_keyboard(paid_confirmed: bool, event_id: int, user_id: int) -> InlineKeyboardBuilder:
+    """Клавиатура в моем мероприятии"""
+    keyboard = InlineKeyboardBuilder()
+    if paid_confirmed:
+        keyboard.row(InlineKeyboardButton(text=f"❌ Отменить регистрацию",
+                                          callback_data=f"unreg-user_{event_id}_{user_id}"))
+
+    keyboard.row(InlineKeyboardButton(text=f"🔙 назад", callback_data=f"menu_my-events"))
+
+    return keyboard
+
 
 
 def event_card_keyboard(event_id: int, user_id: int, registered: bool, back_to: str, from_: str) -> InlineKeyboardBuilder:
@@ -104,6 +123,35 @@ def event_card_keyboard(event_id: int, user_id: int, registered: bool, back_to: 
         keyboard.row(InlineKeyboardButton(text=f"✅ Зарегистрироваться", callback_data=f"reg-user_{event_id}_{user_id}_{from_}"))
 
     keyboard.row(InlineKeyboardButton(text=f"🔙 назад", callback_data=f"{back_to}"))
+
+    return keyboard
+
+
+# PAYMENTS
+def payment_confirm_keyboard(user: User, event: Event) -> InlineKeyboardBuilder:
+    """Клавиатура с кнопкой подтверждения оплаты"""
+    keyboard = InlineKeyboardBuilder()
+    keyboard.row(
+        InlineKeyboardButton(
+            text="Оплатил", callback_data=f"paid_{user.id}_{event.id}"),
+    )
+
+    keyboard.row(InlineKeyboardButton(text="🔙 назад", callback_data=f"user-event_{event.id}"))
+
+    return keyboard
+
+
+def main_keyboard_or_my_events() -> InlineKeyboardBuilder:
+    """Клавиатура для возвращения в Главное меню или в Мои мероприятия"""
+    keyboard = InlineKeyboardBuilder()
+    keyboard.row(
+        InlineKeyboardButton(
+            text="Главное меню", callback_data=f"back_user-menu"),
+        InlineKeyboardButton(
+            text="🏐 Мои мероприятия", callback_data=f"menu_my-events"),
+    )
+
+    keyboard.adjust(2)
 
     return keyboard
 

@@ -39,5 +39,18 @@ class EventRel(Event):
     users_registered: list["User"]
 
 
+class Payment(BaseModel):
+    id: int
+    paid: bool
+    paid_confirm: bool
+    event_id: int
+    user_id: int
+
+
+class PaymentsEventsUsers(Payment):
+    event: Event
+    user: User
+
+
 
 
