@@ -8,7 +8,7 @@ class UserAdd(BaseModel):
     username: str
     firstname: str
     lastname: str
-    level: str | None = None
+    level: int | None = None
 
 
 class User(UserAdd):
@@ -20,9 +20,7 @@ class EventAdd(BaseModel):
     title: str
     date: datetime.datetime
     places: int
-    paid_confirm: bool = False
-    paid: bool = False
-    level: str
+    level: int
     price: int
 
 

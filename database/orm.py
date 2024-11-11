@@ -132,8 +132,6 @@ class AsyncOrm:
             query = select(tables.Event) \
                 .where(tables.Event.id == event_id) \
                 .options(joinedload(tables.Event.users_registered))
-                # TODO: сортировка по имени пользователя
-                # .order_by(tables.User.firstname)
 
             result = await session.execute(query)
             row = result.scalars().first()
@@ -158,7 +156,7 @@ class AsyncOrm:
     @staticmethod
     async def get_last_events() -> List[schemas.Event]:
         """Получение последних tables.Event за 3 дня"""
-        start_date = datetime.datetime.now(tz=pytz.timezone("Europe/Moscow")).date()
+        start_date = (datetime.datetime.now(tz=pytz.timezone("Europe/Moscow")) + datetime.timedelta(days=1)).date()
         end_date = (datetime.datetime.now(tz=pytz.timezone("Europe/Moscow")) - datetime.timedelta(days=3)).date()
 
         async with async_session_factory() as session:
@@ -231,7 +229,7 @@ class AsyncOrm:
             await session.commit()
 
     @staticmethod
-    async def set_level_for_user(user_id: int, level: str):
+    async def set_level_for_user(user_id: int, level: int):
         """Назначение уровня пользователю"""
         async with async_session_factory() as session:
             query = update(tables.User)\
@@ -301,7 +299,7 @@ class AsyncOrm:
             return
 
     @staticmethod
-    async def get_payments_with_events_and_users(user_tg_id: str) -> list[schemas.PaymentsEventsUsers]:
+    async def get_user_payments_with_events_and_users(user_tg_id: str) -> list[schemas.PaymentsEventsUsers]:
         """Получение оплаты по id"""
         user = await AsyncOrm.get_user_by_tg_id(user_tg_id)
 

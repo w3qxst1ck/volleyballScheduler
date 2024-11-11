@@ -26,7 +26,7 @@ class User(Base):
     username: Mapped[str] = mapped_column(nullable=True)
     firstname: Mapped[str]
     lastname: Mapped[str]
-    level: Mapped[str] = mapped_column(nullable=True)
+    level: Mapped[int] = mapped_column(nullable=True)
 
     events: Mapped[list["Event"]] = relationship(
         back_populates="users_registered",
@@ -48,11 +48,8 @@ class Event(Base):
     date: Mapped[datetime.datetime] = mapped_column(server_default=text("TIMEZONE('utc', now())"))
     places: Mapped[int]
     active: Mapped[bool] = mapped_column(default=True)
-    level: Mapped[str]
+    level: Mapped[int]
     price: Mapped[int]
-
-    paid_confirm: Mapped[bool] = mapped_column(default=False)   # TODO убрать
-    paid: Mapped[bool] = mapped_column(default=False)   # TODO убрать
 
     users_registered: Mapped[list["User"]] = relationship(
         back_populates="events",
@@ -67,8 +64,6 @@ class Event(Base):
 class EventsUsers(Base):
     """Many-to-many relationship"""
     __tablename__ = "events_users"
-
-    # id: Mapped[int] = mapped_column(primary_key=True)
 
     user_id: Mapped[int] = mapped_column(
         ForeignKey("users.id", ondelete="CASCADE"),

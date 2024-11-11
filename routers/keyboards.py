@@ -99,12 +99,18 @@ def user_events(payments: list[PaymentsEventsUsers]) -> InlineKeyboardBuilder:
     return keyboard
 
 
-def my_event_card_keyboard(paid_confirmed: bool, event_id: int, user_id: int) -> InlineKeyboardBuilder:
+def my_event_card_keyboard(payment: PaymentsEventsUsers) -> InlineKeyboardBuilder:
     """Клавиатура в моем мероприятии"""
     keyboard = InlineKeyboardBuilder()
-    if paid_confirmed:
-        keyboard.row(InlineKeyboardButton(text=f"❌ Отменить регистрацию",
-                                          callback_data=f"unreg-user_{event_id}_{user_id}"))
+
+    # если оплата подтверждена
+    if payment.paid_confirm:
+        keyboard.row(
+            InlineKeyboardButton(
+                text=f"❌ Отменить регистрацию",
+                callback_data=f"unreg-user_{payment.event_id}_{payment.user_id}"
+            )
+        )
 
     keyboard.row(InlineKeyboardButton(text=f"🔙 назад", callback_data=f"menu_my-events"))
 

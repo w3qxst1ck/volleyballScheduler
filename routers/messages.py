@@ -11,6 +11,7 @@ def user_profile_message(user: User) -> str:
     return message
 
 
+# актуальная карточка
 def event_card_for_user_message(event: EventRel, payment: Payment | None) -> str:
     """Информация о событии с его пользователями"""
     date = convert_date(event.date)
@@ -18,88 +19,101 @@ def event_card_for_user_message(event: EventRel, payment: Payment | None) -> str
 
     user_registered_count = len(event.users_registered)
 
-    message = f"📅 <b>{date}</b> <b>{time}</b>\n\n" \
-              f"<b>\"{event.type}\"</b>\n" \
-              f"{event.title}\n" \
-              f"Минимальный уровень: {settings.levels[event.level]}\n\n" \
-              f"👥 Участников: {user_registered_count}/{event.places} (<b>свободных мест {event.places - user_registered_count}</b>)\n\n" \
-              f"💰 Цена: <b>{event.price} руб.</b>\n\n"
+    message = f"📅 <b>{date}</b> <b>{time}</b>\n"
 
     # пользователь еще не регистрировался
     if not payment:
-        return message
+        pass
 
     # пользователь ожидает подтверждения оплаты
     elif not payment.paid_confirm:
-        message += "⏳ Ожидается подтверждение платежа от администратора"
+        message += "⏳ Ожидается подтверждение платежа от администратора\n\n"
 
     # пользователь зарегистрирован на мероприятие
     else:
-        message += "✅ Вы <b>зарегистрированы</b> на это мероприятие"
+        message += "✅ Вы <b>зарегистрированы</b> на это мероприятие\n\n"
+
+    message += f"<b>\"{event.type}\"</b>\n" \
+               f"{event.title}\n" \
+               f"Минимальный уровень: {settings.levels[event.level]}\n\n" \
+               f"💰 Цена: <b>{event.price} руб.</b>\n\n" \
+               f"👥 Участников: {user_registered_count}/{event.places} (<b>свободных мест {event.places - user_registered_count}</b>)\n\n"
+
+    # если участники уже есть
+    if event.users_registered:
+        # сортировка по имени
+        event.users_registered = sorted(event.users_registered, key=lambda user: user.firstname)
+
+        message += "Участники:\n"
+        for idx, user in enumerate(event.users_registered, 1):
+            message += f"<b>{idx}.</b> <a href='tg://user?id={user.tg_id}'>{user.firstname} {user.lastname}</a> " \
+                       f"{f'({settings.levels[user.level]})' if user.level else ''}\n"
+
+        # message += "\nДля перехода в диалог с участником нажмите на его имя"
 
     return message
 
 
-def my_event_card_for_user_message(payment: Payment, event: EventRel) -> str:
-    """Карточка для события о вкладке мои события"""
-    date = convert_date(event.date)
-    time = convert_time(event.date)
-
-    user_registered_count = len(event.users_registered)
-
-    message = f"📅 <b>{date}</b> <b>{time}</b>\n\n" \
-              f"<b>\"{event.type}\"</b>\n" \
-              f"{event.title}\n" \
-              f"Минимальный уровень: {settings.levels[event.level]}\n\n" \
-              f"👥 Участников: {user_registered_count}/{event.places} (<b>свободных мест {event.places - user_registered_count}</b>)\n\n" \
-              f"💰 Цена: <b>{event.price} руб.</b>\n\n"
-
-    if payment.paid_confirm:
-        message += "✅ Вы <b>зарегистрированы</b> на это мероприятие"
-    else:
-        message += "⏳ Ожидается подтверждение платежа от администратора"
-
-    return message
+# def my_event_card_for_user_message(payment: Payment, event: EventRel) -> str:
+#     """Карточка для события о вкладке мои события"""
+#     date = convert_date(event.date)
+#     time = convert_time(event.date)
+#
+#     user_registered_count = len(event.users_registered)
+#
+#     message = f"📅 <b>{date}</b> <b>{time}</b>\n\n" \
+#               f"<b>\"{event.type}\"</b>\n" \
+#               f"{event.title}\n" \
+#               f"Минимальный уровень: {settings.levels[event.level]}\n\n" \
+#               f"👥 Участников: {user_registered_count}/{event.places} (<b>свободных мест {event.places - user_registered_count}</b>)\n\n" \
+#               f"💰 Цена: <b>{event.price} руб.</b>\n\n"
+#
+#     if payment.paid_confirm:
+#         message += "✅ Вы <b>зарегистрированы</b> на это мероприятие"
+#     else:
+#         message += "⏳ Ожидается подтверждение платежа от администратора"
+#
+#     return message
 
 
 # PAYMENTS
 def invoice_message_for_user(event: Event) -> str:
     """Сообщение о стоимости мероприятия"""
     message = f"Цена мероприятия <b>\"{event.title} {convert_date(event.date)} в {convert_time(event.date)}\"</b> - <b>{event.price} руб.</b>\n\n"
-    message += f"Для записи необходимо выполнить оплату переводом {event.price} руб. по телефону: \n\n{settings.admin_phone}\n\n"
+    message += f"Для записи необходимо выполнить оплату переводом <b>{event.price}</b> руб. по телефону: \n\n{settings.admin_phone}\n\n"
     message +=  f"❗<b>ВАЖНО: в комментарии к оплате для подтверждения платежа необходимо указать имя пользователя (например Иван Иванов), " \
                f"указанные в вашем профиле</b>\n\n" \
                f"После выполнения оплаты нажмите кнопку <b>\"Оплатил\"</b>"
     return message
 
 
-def event_card_for_admin_message(event: EventRel) -> str:
-    """Информация о событии для админа"""
-    date = convert_date(event.date)
-    time = convert_time(event.date)
-    user_registered_count = len(event.users_registered)
-
-    message = f"📅 <b>{date} {time}</b>\n\n" \
-              f"<b>\"{event.type}\"</b>\n" \
-              f"{event.title}\n" \
-              f"Минимальный уровень: {settings.levels[event.level]}\n\n" \
-              f"👥 Участников: {user_registered_count}/{event.places} (<b>свободных мест {event.places - user_registered_count}</b>)\n\n"\
-              f"💰 Цена: {event.price} руб.\n\n" \
-
-
-    if event.users_registered:
-        message += "Участники:\n"
-        for idx, user in enumerate(event.users_registered, 1):
-            message += f"<b>{idx}.</b> <a href='tg://user?id={user.tg_id}'>{user.firstname} {user.lastname}</a> " \
-                       f"{f'({settings.levels[user.level]})' if user.level else ''}\n"
-
-        message += "\nДля перехода в диалог с участником нажмите на его имя\n" \
-                   "Чтобы удалить участника с события, нажмите кнопку с соответствующим номером участника"
-    # если участников нет
-    else:
-        message += "<b>Участников пока нет</b>"
-
-    return message
+# def event_card_for_admin_message(event: EventRel) -> str:
+#     """Информация о событии для админа"""
+#     date = convert_date(event.date)
+#     time = convert_time(event.date)
+#     user_registered_count = len(event.users_registered)
+#
+#     message = f"📅 <b>{date} {time}</b>\n\n" \
+#               f"<b>\"{event.type}\"</b>\n" \
+#               f"{event.title}\n" \
+#               f"Минимальный уровень: {settings.levels[event.level]}\n\n" \
+#               f"👥 Участников: {user_registered_count}/{event.places} (<b>свободных мест {event.places - user_registered_count}</b>)\n\n"\
+#               f"💰 Цена: {event.price} руб.\n\n" \
+#
+#
+#     if event.users_registered:
+#         message += "Участники:\n"
+#         for idx, user in enumerate(event.users_registered, 1):
+#             message += f"<b>{idx}.</b> <a href='tg://user?id={user.tg_id}'>{user.firstname} {user.lastname}</a> " \
+#                        f"{f'({settings.levels[user.level]})' if user.level else ''}\n"
+#
+#         message += "\nДля перехода в диалог с участником нажмите на его имя\n" \
+#                    "Чтобы удалить участника с события, нажмите кнопку с соответствующим номером участника"
+#     # если участников нет
+#     else:
+#         message += "<b>Участников пока нет</b>"
+#
+#     return message
 
 
 def event_levels_card_for_admin_message(event: EventRel) -> str:
@@ -112,6 +126,9 @@ def event_levels_card_for_admin_message(event: EventRel) -> str:
               f"{event.title}\n\n" \
 
     if event.users_registered:
+        # сортировка по имени
+        event.users_registered = sorted(event.users_registered, key=lambda user: user.firstname)
+
         message += "Участники:\n"
         for idx, user in enumerate(event.users_registered, 1):
             message += f"<b>{idx}.</b> {user.firstname} {user.lastname} " \
@@ -131,7 +148,7 @@ def notify_deleted_user_message(event: EventRel) -> str:
     date = convert_date(event.date)
     time = convert_time(event.date)
     message = f"🔔 <i>Автоматическое уведомление</i>\n\n" \
-              f"Администратор удалил вас из мероприятия \"{date} {time} {event.title}\"!\n\n" \
+              f"Администратор удалил вас из мероприятия <b>\"{date} {time} {event.title}\"</b>!\n\n" \
               f"Для уточнения деталей вы можете связаться с администратором @{settings.main_admin}"
 
     return message

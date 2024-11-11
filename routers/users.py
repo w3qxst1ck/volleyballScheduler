@@ -162,14 +162,18 @@ async def register_user_on_event(callback: types.CallbackQuery) -> None:
     event_id = int(callback.data.split("_")[1])
     user_id = int(callback.data.split("_")[2])
 
-    # TODO сделать проверку на уровень
-
     event = await AsyncOrm.get_event_by_id(event_id)
     user = await AsyncOrm.get_user_by_id(user_id)
 
-    msg = ms.invoice_message_for_user(event)
+    # если уровень соответствует
+    if user.level > event.level or not user.level:
+        msg = ms.invoice_message_for_user(event)
+        await callback.message.edit_text(msg, reply_markup=kb.payment_confirm_keyboard(user, event).as_markup())
 
-    await callback.message.edit_text(msg, reply_markup=kb.payment_confirm_keyboard(user, event).as_markup())
+    # если уровень ниже
+    else:
+        # TODO прикрепить клавиатуру назад
+        await callback.message.edit_text("Ваш уровень ниже необходимого для данного мероприятия")
 
 
 @router.callback_query(lambda callback: callback.data.split("_")[0] == "paid")
@@ -180,9 +184,6 @@ async def register_paid_event(callback: types.CallbackQuery, bot: Bot) -> None:
 
     # создание платежа в БД
     await AsyncOrm.create_payments(user_id, event_id)
-
-    msg = "Дождитесь подтверждения оплаты от администратора\n\n" \
-              "Вы можете отслеживать статус оплаты во вкладке \"🏐 Мои мероприятия\""
 
     # оповещение администратора
     user = await AsyncOrm.get_user_by_id(user_id)
@@ -200,14 +201,18 @@ async def register_paid_event(callback: types.CallbackQuery, bot: Bot) -> None:
     # TODO если админ подтвердил сделать запись в таблице EventsUsers
     # TODO как часто чистить оплаты
 
-    await callback.message.edit_text(msg, reply_markup=kb.main_keyboard_or_my_events().as_markup())
+    await callback.message.edit_text(f"Ваш платеж на сумму <b>{event.price}</b> руб. находится в обработке")
+
+    msg = "Дождитесь подтверждения оплаты от администратора\n\n" \
+          "Вы можете отслеживать статус оплаты во вкладке \"🏐 Мои мероприятия\""
+    await callback.message.answer(msg, reply_markup=kb.main_keyboard_or_my_events().as_markup())
 
 
 # USER ALREADY REGISTERED EVENTS
 @router.callback_query(lambda callback: callback.data.split("_")[1] == "my-events")
 async def user_event_registered_handler(callback: types.CallbackQuery) -> None:
     """Вывод мероприятий куда пользователь уже зарегистрирован"""
-    events = await AsyncOrm.get_payments_with_events_and_users(str(callback.from_user.id))
+    events = await AsyncOrm.get_user_payments_with_events_and_users(str(callback.from_user.id))
 
     if not events:
         msg = "Вы пока никуда не зарегистрировались\n\nВы можете это сделать во вкладке \n\"🗓️ Все мероприятия\""
@@ -225,13 +230,9 @@ async def my_event_info_handler(callback: types.CallbackQuery) -> None:
     payment = await AsyncOrm.get_payment_by_id(payment_id)
     event = await AsyncOrm.get_event_with_users(payment.event_id)
 
-    msg = ms.my_event_card_for_user_message(payment, event)
+    msg = ms.event_card_for_user_message(event, payment)
 
-    await callback.message.edit_text(msg, reply_markup=kb.my_event_card_keyboard(
-        paid_confirmed=payment.paid_confirm,
-        event_id=event.id,
-        user_id=payment.user_id
-    ).as_markup())
+    await callback.message.edit_text(msg, reply_markup=kb.my_event_card_keyboard(payment).as_markup())
 
 
 # USER PROFILE

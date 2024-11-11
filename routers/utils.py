@@ -49,7 +49,7 @@ def is_valid_date(date: str) -> bool:
     """Проверка валидности даты"""
     try:
         result = datetime.strptime(date, "%d.%m.%Y").date()
-        if result <= datetime.now(tz=pytz.timezone("Europe/Moscow")).date():
+        if result < datetime.now(tz=pytz.timezone("Europe/Moscow")).date():
             return False
     except ValueError:
         return False

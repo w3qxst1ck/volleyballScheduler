@@ -38,7 +38,8 @@ async def event_info_handler(callback: types.CallbackQuery) -> None:
     """Карточка события для админа"""
     event_id = int(callback.data.split("_")[1])
     event = await AsyncOrm.get_event_with_users(event_id)
-    msg = ms.event_card_for_admin_message(event)
+    msg = ms.event_card_for_user_message(event, payment=None)
+    msg += "\nЧтобы удалить участника с события, нажмите кнопку с соответствующим номером участника"
 
     await callback.message.edit_text(
         msg,
@@ -63,6 +64,7 @@ async def event_info_handler(callback: types.CallbackQuery, bot: Bot) -> None:
     user_id = int(callback.data.split("_")[2])
 
     await AsyncOrm.delete_user_from_event(event_id, user_id)
+    await AsyncOrm.delete_payment(event_id, user_id)
     event = await AsyncOrm.get_event_with_users(event_id)
 
     # оповещение пользователя об удалении
@@ -72,7 +74,8 @@ async def event_info_handler(callback: types.CallbackQuery, bot: Bot) -> None:
 
     await callback.message.edit_text("Пользователь удален с события ✅")
 
-    msg_for_admin = ms.event_card_for_admin_message(event)
+    msg_for_admin = ms.event_card_for_user_message(event, payment=None)
+    msg_for_admin += "\nЧтобы удалить участника с события, нажмите кнопку с соответствующим номером участника"
     await callback.message.answer(msg_for_admin, reply_markup=kb.event_card_keyboard_admin(event).as_markup())
 
 
@@ -236,7 +239,7 @@ async def add_event_date_handler(message: types.Message, state: FSMContext) -> N
 @router.callback_query(AddEventFSM.level, lambda callback: callback.data.split("_")[0] == "admin-add-event-level")
 async def add_event_date_handler(callback: types.CallbackQuery, state: FSMContext) -> None:
     """Сохранение level, выбор price"""
-    level = callback.data.split("_")[1]
+    level = int(callback.data.split("_")[1])
     await state.update_data(level=level)
     await state.set_state(AddEventFSM.price)
 
@@ -331,7 +334,7 @@ async def event_level_choose_handler(callback: types.CallbackQuery) -> None:
     """Выбор уровня для конкретного участника"""
     event_id = int(callback.data.split("_")[1])
     user_id = int(callback.data.split("_")[2])
-    level = callback.data.split("_")[3]
+    level = int(callback.data.split("_")[3])
 
     await AsyncOrm.set_level_for_user(user_id, level)
 
