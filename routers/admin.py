@@ -356,9 +356,12 @@ async def confirm_payment(callback: types.CallbackQuery, bot: Bot) -> None:
     event = await AsyncOrm.get_event_by_id(event_id)
     user = await AsyncOrm.get_user_by_id(user_id)
 
+    # подтверждение оплаты
     if confirm == "ok":
         # подтверждение оплаты
         await AsyncOrm.update_payment_status(event_id, user_id)
+        # создание записи в таблице event_users
+        await AsyncOrm.add_user_to_event(event_id, user_id)
         # сообщение админу
         await callback.message.edit_text(callback.message.text)
         await callback.message.answer("Оплата подтверждена ✅\nПользователь записан на мероприятие")
@@ -366,15 +369,19 @@ async def confirm_payment(callback: types.CallbackQuery, bot: Bot) -> None:
         # сообщение пользователю
         date = utils.convert_date(event.date)
         time = utils.convert_time(event.date)
-        msg = f"Оплата прошла успешно ✅\n\nВы записаны на \"{event.type} {event.title} {date} в {time}\""
+        msg = f"🔔 <i>Автоматическое уведомление</i>\n\nОплата прошла успешно ✅\nВы записаны на \"{event.type} {event.title} {date} в {time}\""
         await bot.send_message(user.tg_id, msg)
 
+    # отклонение оплаты
     else:
         # сообщение админу
         await callback.message.edit_text(callback.message.text)
         await callback.message.answer("Оплата отклонена ❌\nОповещение направлено пользователю")
 
+        # удаление записи из таблицы payments
+        await AsyncOrm.delete_payment(event_id, user_id)
+
         # сообщение пользователю
-        msg = f"Администратор оплату не подтвердил ❌\n\n" \
+        msg = f"🔔 <i>Автоматическое уведомление</i>\n\nАдминистратор оплату не подтвердил ❌\n" \
                        f"Вы можете связаться с администрацией канала\n@{settings.main_admin}"
         await bot.send_message(user.tg_id, msg)

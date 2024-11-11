@@ -5,7 +5,7 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from functools import wraps
 from typing import Callable
 
-from database.schemas import Event, User, EventRel, PaymentsEventsUsers
+from database.schemas import Event, User, EventRel, PaymentsEventsUsers, Payment
 from routers.utils import convert_date
 from settings import settings
 
@@ -111,16 +111,13 @@ def my_event_card_keyboard(paid_confirmed: bool, event_id: int, user_id: int) ->
     return keyboard
 
 
-
-def event_card_keyboard(event_id: int, user_id: int, registered: bool, back_to: str, from_: str) -> InlineKeyboardBuilder:
+def event_card_keyboard(event_id: int, user_id: int, payment: Payment | None, back_to: str) -> InlineKeyboardBuilder:
     """Зарегистрироваться и отменить регистрацию"""
     keyboard = InlineKeyboardBuilder()
 
-    if registered:
-        keyboard.row(
-            InlineKeyboardButton(text=f"❌ Отменить регистрацию", callback_data=f"unreg-user_{event_id}_{user_id}_{from_}"))
-    else:
-        keyboard.row(InlineKeyboardButton(text=f"✅ Зарегистрироваться", callback_data=f"reg-user_{event_id}_{user_id}_{from_}"))
+    # пользователь еще не регистрировался
+    if not payment:
+        keyboard.row(InlineKeyboardButton(text=f"✅ Зарегистрироваться", callback_data=f"reg-user_{event_id}_{user_id}"))
 
     keyboard.row(InlineKeyboardButton(text=f"🔙 назад", callback_data=f"{back_to}"))
 

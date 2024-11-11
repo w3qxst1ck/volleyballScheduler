@@ -20,7 +20,7 @@ router.callback_query.middleware.register(CheckPrivateMessageMiddleware())
 
 # REGISTRATION
 @router.message(Command("start"))
-# @router.message(Command("menu"))
+@router.message(Command("menu"))
 async def start_handler(message: types.Message, state: FSMContext) -> None:
     """Start message, начало RegisterUserFsm"""
     tg_id = str(message.from_user.id)
@@ -91,7 +91,6 @@ async def add_user_handler(message: types.Message, state: FSMContext) -> None:
         await state.update_data(prev_mess=msg)
 
 
-@router.message(Command("menu"))
 @router.callback_query(lambda callback: callback.data.split("_")[1] == "user-menu")
 async def back_menu_handler(callback: types.CallbackQuery) -> None:
     """Главное меню пользователя"""
@@ -102,12 +101,10 @@ async def back_menu_handler(callback: types.CallbackQuery) -> None:
         await callback.message.edit_text("Главное меню", reply_markup=kb.menu_users_keyboard().as_markup())
 
 
-# USER EVENTS
+# ALL EVENTS
 @router.callback_query(lambda callback: callback.data.split("_")[1] == "all-events")
 async def user_events_dates_handler(callback: types.CallbackQuery) -> None:
     """Вывод дат с мероприятиями мероприятий"""
-    # events = await AsyncOrm.get_events_with_users(only_active=True)
-
     events = await AsyncOrm.get_events(only_active=True)
     events_dates = [event.date for event in events]
     unique_dates = utils.get_unique_dates(events_dates)
@@ -139,27 +136,22 @@ async def user_event_handler(callback: types.CallbackQuery) -> None:
     """Вывод карточки мероприятия для пользователя"""
 
     event_id = int(callback.data.split("_")[1])
+    user_tg_id = str(callback.from_user.id)
 
-    user = await AsyncOrm.get_user_by_tg_id(str(callback.from_user.id))
+    user = await AsyncOrm.get_user_by_tg_id(user_tg_id)
     event_with_users = await AsyncOrm.get_event_with_users(event_id)
 
-    # если зарегистрирован
-    if user in event_with_users.users_registered:
-        registered = True
-    # не зарегистрирован
-    else:
-        registered = False
+    payment = await AsyncOrm.get_payment_by_event_and_user(event_id, user.id)
 
-    msg = ms.event_card_for_user_message(event_with_users, registered)
+    msg = ms.event_card_for_user_message(event_with_users, payment)
 
     await callback.message.edit_text(
         msg,
         reply_markup=kb.event_card_keyboard(
             event_id,
             user.id,
-            registered,
+            payment,
             f"events-date_{utils.convert_date(event_with_users.date)}",
-            "events"
         ).as_markup()
     )
 
@@ -196,10 +188,10 @@ async def register_paid_event(callback: types.CallbackQuery, bot: Bot) -> None:
     user = await AsyncOrm.get_user_by_id(user_id)
     event = await AsyncOrm.get_event_by_id(event_id)
 
-    msg_to_admin = f"Пользователь <b>{user.firstname} {user.lastname}</b> оплатил \"{event.type} {event.title}\" " \
+    msg_to_admin = f"Пользователь <b>{user.firstname} {user.lastname}</b> оплатил {event.type} \"{event.title}\" " \
                    f"на сумму {event.price} руб. \n\nПодтвердите или отклоните оплату"
     await bot.send_message(
-        settings.settings.admins[0],
+        settings.settings.admins[0],    #  TODO добавить отдельно поле админа в settings
         msg_to_admin,
         reply_markup=kb.confirm_decline_keyboard(event_id, user_id).as_markup()
     )
@@ -211,12 +203,12 @@ async def register_paid_event(callback: types.CallbackQuery, bot: Bot) -> None:
     await callback.message.edit_text(msg, reply_markup=kb.main_keyboard_or_my_events().as_markup())
 
 
-
 # USER ALREADY REGISTERED EVENTS
 @router.callback_query(lambda callback: callback.data.split("_")[1] == "my-events")
 async def user_event_registered_handler(callback: types.CallbackQuery) -> None:
     """Вывод мероприятий куда пользователь уже зарегистрирован"""
     events = await AsyncOrm.get_payments_with_events_and_users(str(callback.from_user.id))
+
     if not events:
         msg = "Вы пока никуда не зарегистрировались\n\nВы можете это сделать во вкладке \n\"🗓️ Все мероприятия\""
     else:
