@@ -95,7 +95,7 @@ class AsyncOrm:
         """Получение tables.User с tables.Events"""
         async with async_session_factory() as session:
             if only_active:
-                query = select(tables.User).join(tables.User.events).filter(tables.Event.active == True) # TODO
+                query = select(tables.User).join(tables.User.events).filter(tables.Event.active == True) # TODO что за туду непонятно???
             else:
                 query = select(tables.User).options(joinedload(tables.User.events))
             result = await session.execute(query)

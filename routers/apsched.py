@@ -22,7 +22,7 @@ async def update_events():
 
 
 async def notify_users_about_events(bot: aiogram.Bot):
-    """Напоминание пользователей о событии, на которое они записались (за день до события)"""
+    """Напоминание пользователям о событии, на которое они записались (за день до события)"""
     events = await AsyncOrm.get_events_with_users()
 
     for event in events:

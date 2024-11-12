@@ -30,7 +30,8 @@ class Database(BaseSettings):
 class Settings(BaseSettings):
     bot_token: str
     admins: list
-    main_admin: str
+    main_admin_url: str
+    main_admin_tg_id: str
     levels: dict = LEVELS
     admin_phone: str
     db: Database = Database()

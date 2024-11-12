@@ -214,14 +214,12 @@ async def register_paid_event(callback: types.CallbackQuery, bot: Bot) -> None:
     msg_to_admin = f"Пользователь <b>{user.firstname} {user.lastname}</b> оплатил {event.type} \"{event.title}\" " \
                    f"на сумму {event.price} руб. \n\nПодтвердите или отклоните оплату"
     await bot.send_message(
-        settings.settings.admins[0],    #  TODO добавить отдельно поле админа в settings
+        settings.settings.main_admin_tg_id,
         msg_to_admin,
         reply_markup=kb.confirm_decline_keyboard(event_id, user_id).as_markup()
     )
 
-    # TODO что делать с теми кому оплату не подтвердили
-    # TODO если админ подтвердил сделать запись в таблице EventsUsers
-    # TODO как часто чистить оплаты
+    # TODO как часто чистить оплаты UPD: зачем их чистить?
 
     await callback.message.edit_text(f"Ваш платеж на сумму <b>{event.price}</b> руб. находится в обработке")
 
