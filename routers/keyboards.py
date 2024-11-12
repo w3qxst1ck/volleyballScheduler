@@ -99,7 +99,7 @@ def user_events(payments: list[PaymentsEventsUsers]) -> InlineKeyboardBuilder:
     return keyboard
 
 
-def my_event_card_keyboard(payment: PaymentsEventsUsers) -> InlineKeyboardBuilder:
+def my_event_card_keyboard(payment: Payment) -> InlineKeyboardBuilder:
     """Клавиатура в моем мероприятии"""
     keyboard = InlineKeyboardBuilder()
 
@@ -126,6 +126,17 @@ def event_card_keyboard(event_id: int, user_id: int, payment: Payment | None, ba
         keyboard.row(InlineKeyboardButton(text=f"✅ Зарегистрироваться", callback_data=f"reg-user_{event_id}_{user_id}"))
 
     keyboard.row(InlineKeyboardButton(text=f"🔙 назад", callback_data=f"{back_to}"))
+
+    return keyboard
+
+
+def yes_no_keyboard_for_unreg_from_event(event_id: int, user_id: int, payment_id: int) -> InlineKeyboardBuilder:
+    """Подтверждение удаления с события в Моих мероприятиях"""
+    keyboard = InlineKeyboardBuilder()
+
+    keyboard.row(InlineKeyboardButton(text="Да", callback_data=f"unreg-user-confirmed_{event_id}_{user_id}"))
+    keyboard.row(InlineKeyboardButton(text="Нет", callback_data=f"my-events_{payment_id}"))
+    keyboard.adjust(2)
 
     return keyboard
 

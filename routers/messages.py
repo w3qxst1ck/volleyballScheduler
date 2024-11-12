@@ -5,7 +5,7 @@ from settings import settings
 
 def user_profile_message(user: User) -> str:
     """Сообщение с профилем пользователя"""
-    user_lvl = f"🔝 Уровень: " + settings.levels[user.level] if user.level else f"🔝 Уровень: уровень еще не определен"
+    user_lvl = f"🔝 Уровень: " + settings.levels[user.level] if user.level else f"🔝 Уровень: еще не определен"
     message = f"Ваш профиль\n\n👤 {user.firstname} {user.lastname}\n{user_lvl}"
 
     return message
