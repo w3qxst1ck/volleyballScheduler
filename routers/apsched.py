@@ -5,12 +5,14 @@ import pytz
 
 from database.orm import AsyncOrm
 import routers.messages as ms
+from settings import settings
 
 
 async def run_every_day(bot: aiogram.Bot):
     """Запуск ежедневной проверки"""
     await update_events()
     await notify_users_about_events(bot)
+    await delete_old_events()
 
 
 async def update_events():
@@ -33,3 +35,8 @@ async def notify_users_about_events(bot: aiogram.Bot):
                     await bot.send_message(user.tg_id, msg)
                 except:
                     pass
+
+
+async def delete_old_events():
+    """Удаление событий которые были более settings.expire_event_days дней назад"""
+    await AsyncOrm.delete_old_events(settings.expire_event_days)

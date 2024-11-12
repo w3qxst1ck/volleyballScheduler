@@ -201,6 +201,20 @@ class AsyncOrm:
             events = [schemas.EventRel.model_validate(row, from_attributes=True) for row in rows]
             return events
 
+    @staticmethod
+    async def delete_old_events(expire_days: int = 14):
+        """Удаление events которые были позднее expire_days"""
+        expire_date = datetime.datetime.now() - datetime.timedelta(days=expire_days)
+        print(expire_date)
+
+        async with async_session_factory() as session:
+            query = delete(tables.Event).where(tables.Event.date < expire_date)
+
+            await session.execute(query)
+            await session.flush()
+            await session.commit()
+
+
     # EVENTS_USERS
     @staticmethod
     async def add_user_to_event(event_id: int, user_id: int):

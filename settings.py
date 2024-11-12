@@ -33,6 +33,7 @@ class Settings(BaseSettings):
     main_admin_url: str
     main_admin_tg_id: str
     levels: dict = LEVELS
+    expire_event_days: int = 14
     admin_phone: str
     db: Database = Database()
 
