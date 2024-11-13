@@ -115,6 +115,16 @@ class AsyncOrm:
             await session.commit()
 
     @staticmethod
+    async def delete_event(event_id: int) -> None:
+        """Удаление из таблицы events"""
+        async with async_session_factory() as session:
+            query = delete(tables.Event).where(tables.Event.id == event_id)
+
+            await session.execute(query)
+            await session.flush()
+            await session.commit()
+
+    @staticmethod
     async def get_event_by_id(event_id: int) -> schemas.Event:
         """Получение tables.User по id"""
         async with async_session_factory() as session:
@@ -360,6 +370,7 @@ class AsyncOrm:
             await session.execute(query)
             await session.flush()
             await session.commit()
+
 
 
 

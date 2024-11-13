@@ -197,7 +197,7 @@ def events_keyboard_admin(events: list[Event]) -> InlineKeyboardBuilder:
 
 
 def event_card_keyboard_admin(event: EventRel) -> InlineKeyboardBuilder:
-    """Выбор участника события"""
+    """Выбор участника события для удаления"""
     keyboard = InlineKeyboardBuilder()
 
     if event.users_registered:
@@ -205,6 +205,7 @@ def event_card_keyboard_admin(event: EventRel) -> InlineKeyboardBuilder:
             keyboard.row(InlineKeyboardButton(text=f"{idx}", callback_data=f"admin-event-user_{event.id}_{user.id}"))
         keyboard.adjust(3)
 
+    keyboard.row(InlineKeyboardButton(text=f"🗑️ Удалить мероприятие", callback_data=f"admin-event-delete_{event.id}"))
     keyboard.row(InlineKeyboardButton(text=f"🔙 назад", callback_data="back-admin-events"))
     return keyboard
 
@@ -214,6 +215,17 @@ def yes_no_keyboard_for_admin_delete_user_from_event(event_id: int, user_id: int
     keyboard = InlineKeyboardBuilder()
 
     keyboard.row(InlineKeyboardButton(text="Да", callback_data=f"admin-event-user-delete_{event_id}_{user_id}"))
+    keyboard.row(InlineKeyboardButton(text="Нет", callback_data=f"admin-event_{event_id}"))
+    keyboard.adjust(2)
+
+    return keyboard
+
+
+def yes_no_keyboard_for_admin_delete_event(event_id: int) -> InlineKeyboardBuilder:
+    """Подтверждение удаления события"""
+    keyboard = InlineKeyboardBuilder()
+
+    keyboard.row(InlineKeyboardButton(text="Да", callback_data=f"admin-event-delete-confirm_{event_id}"))
     keyboard.row(InlineKeyboardButton(text="Нет", callback_data=f"admin-event_{event_id}"))
     keyboard.adjust(2)
 

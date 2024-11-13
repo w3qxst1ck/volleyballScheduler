@@ -58,7 +58,7 @@ async def event_info_handler(callback: types.CallbackQuery) -> None:
 
 
 @router.callback_query(lambda callback: callback.data.split("_")[0] == "admin-event-user-delete")
-async def event_info_handler(callback: types.CallbackQuery, bot: Bot) -> None:
+async def event_delete_user_handler(callback: types.CallbackQuery, bot: Bot) -> None:
     """Удаление пользователя в событии для админа"""
     event_id = int(callback.data.split("_")[1])
     user_id = int(callback.data.split("_")[2])
@@ -74,9 +74,35 @@ async def event_info_handler(callback: types.CallbackQuery, bot: Bot) -> None:
 
     await callback.message.edit_text("Пользователь удален с события ✅")
 
+    # возврат к карточке мероприятия
     msg_for_admin = ms.event_card_for_user_message(event, payment=None)
     msg_for_admin += "\nЧтобы удалить участника с события, нажмите кнопку с соответствующим номером участника"
     await callback.message.answer(msg_for_admin, reply_markup=kb.event_card_keyboard_admin(event).as_markup())
+
+
+@router.callback_query(lambda callback: callback.data.split("_")[0] == "admin-event-delete")
+async def event_delete_handler(callback: types.CallbackQuery) -> None:
+    """Подтверждение удаления события админом"""
+    event_id = int(callback.data.split("_")[1])
+
+    event = await AsyncOrm.get_event_by_id(event_id)
+    date = utils.convert_date(event.date)
+    time = utils.convert_time(event.date)
+    await callback.message.edit_text(
+        f"Вы действительно хотите удалить мероприятие <b>{event.type} \"{event.title}\"</b> {date} в {time}?",
+        reply_markup=kb.yes_no_keyboard_for_admin_delete_event(event_id).as_markup())
+
+
+@router.callback_query(lambda callback: callback.data.split("_")[0] == "admin-event-delete-confirm")
+async def event_delete_confirmed_handler(callback: types.CallbackQuery) -> None:
+    """Удаление события админом"""
+    event_id = int(callback.data.split("_")[1])
+    await AsyncOrm.delete_event(event_id)
+
+    await callback.message.edit_text("Событие удалено ✅")
+
+    events = await AsyncOrm.get_events()
+    await callback.message.answer("События", reply_markup=kb.events_keyboard_admin(events).as_markup())
 
 
 # ADD EVENT
