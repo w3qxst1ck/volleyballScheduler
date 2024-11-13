@@ -306,6 +306,14 @@ async def main_menu_handler(callback: types.CallbackQuery) -> None:
     await callback.message.edit_text(message, reply_markup=kb.user_profile_keyboard().as_markup())
 
 
+# HELP
+@router.message(Command("help"))
+async def help_handler(message: types.Message) -> None:
+    """Help message"""
+    msg = ms.get_help_message()
+    await message.answer(msg)
+
+
 # CANCEL BUTTON
 @router.callback_query(lambda callback: callback.data == "button_cancel", StateFilter("*"))
 async def cancel_handler(callback: types.CallbackQuery, state: FSMContext):
