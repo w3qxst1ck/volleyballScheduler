@@ -221,7 +221,8 @@ async def register_paid_event(callback: types.CallbackQuery, bot: Bot) -> None:
 
     # TODO как часто чистить оплаты UPD: зачем их чистить?
 
-    await callback.message.edit_text(f"Ваш платеж на сумму <b>{event.price}</b> руб. находится в обработке")
+    await callback.message.edit_text(f"🔔 <i>Автоматическое уведомление</i>\n\n"
+                                     f"Ваш платеж на сумму <b>{event.price}</b> руб. находится в обработке")
 
     msg = "Дождитесь подтверждения оплаты от администратора\n\n" \
           "Вы можете отслеживать статус оплаты во вкладке \"🏐 Мои мероприятия\""
@@ -232,16 +233,15 @@ async def register_paid_event(callback: types.CallbackQuery, bot: Bot) -> None:
 @router.callback_query(lambda callback: callback.data.split("_")[1] == "my-events")
 async def user_event_registered_handler(callback: types.CallbackQuery) -> None:
     """Вывод мероприятий куда пользователь уже зарегистрирован"""
-    events = await AsyncOrm.get_user_payments_with_events_and_users(str(callback.from_user.id))
+    payments = await AsyncOrm.get_user_payments_with_events_and_users(str(callback.from_user.id))
+    active_events = list(filter(lambda payment: payment.event.active == True, payments))
 
-    # TODO необходимо выводить только активные мероприятия иначе будет видеть старые и отписываться от них
-
-    if not events:
+    if not active_events:
         msg = "Вы пока никуда не зарегистрировались\n\nВы можете это сделать во вкладке \n\"🗓️ Все мероприятия\""
     else:
         msg = "Мероприятия куда вы записывались:\n\n✅ - оплаченные мероприятия\n⏳ - ожидается подтверждение оплаты от администратора"
 
-    await callback.message.edit_text(msg, reply_markup=kb.user_events(events).as_markup())
+    await callback.message.edit_text(msg, reply_markup=kb.user_events(active_events).as_markup())
 
 
 @router.callback_query(lambda callback: callback.data.split("_")[0] == "my-events")
@@ -282,7 +282,8 @@ async def unregister_form_my_event_handler(callback: types.CallbackQuery) -> Non
     await AsyncOrm.delete_payment(event_id, user_id)
 
     event = await AsyncOrm.get_event_by_id(event_id)
-    await callback.message.edit_text(f"Вы отменили запись на мероприятие <b>{event.type} \"{event.title}\"</b>")
+    await callback.message.edit_text(f"🔔 <i>Автоматическое уведомление</i>\n\n"
+                                     f"Вы отменили запись на мероприятие <b>{event.type} \"{event.title}\"</b>")
 
     # возврат ко вкладке мои мероприятия
     events = await AsyncOrm.get_user_payments_with_events_and_users(str(callback.from_user.id))

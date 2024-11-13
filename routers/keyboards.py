@@ -68,7 +68,7 @@ def dates_keyboard(dates: dict[str:int]) -> InlineKeyboardBuilder:
 
         keyboard.row(
 
-            InlineKeyboardButton(text=f"{key} - {count} {events}", callback_data=f"events-date_{key}"))
+            InlineKeyboardButton(text=f"{key} ({count} {events})", callback_data=f"events-date_{key}"))
 
     keyboard.adjust(1)
     return keyboard

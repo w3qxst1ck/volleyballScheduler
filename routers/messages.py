@@ -54,28 +54,6 @@ def event_card_for_user_message(event: EventRel, payment: Payment | None) -> str
     return message
 
 
-# def my_event_card_for_user_message(payment: Payment, event: EventRel) -> str:
-#     """Карточка для события о вкладке мои события"""
-#     date = convert_date(event.date)
-#     time = convert_time(event.date)
-#
-#     user_registered_count = len(event.users_registered)
-#
-#     message = f"📅 <b>{date}</b> <b>{time}</b>\n\n" \
-#               f"<b>\"{event.type}\"</b>\n" \
-#               f"{event.title}\n" \
-#               f"Минимальный уровень: {settings.levels[event.level]}\n\n" \
-#               f"👥 Участников: {user_registered_count}/{event.places} (<b>свободных мест {event.places - user_registered_count}</b>)\n\n" \
-#               f"💰 Цена: <b>{event.price} руб.</b>\n\n"
-#
-#     if payment.paid_confirm:
-#         message += "✅ Вы <b>зарегистрированы</b> на это мероприятие"
-#     else:
-#         message += "⏳ Ожидается подтверждение платежа от администратора"
-#
-#     return message
-
-
 # PAYMENTS
 def invoice_message_for_user(event: Event) -> str:
     """Сообщение о стоимости мероприятия"""
@@ -85,35 +63,6 @@ def invoice_message_for_user(event: Event) -> str:
                f"указанные в вашем профиле</b>\n\n" \
                f"После выполнения оплаты нажмите кнопку <b>\"Оплатил\"</b>"
     return message
-
-
-# def event_card_for_admin_message(event: EventRel) -> str:
-#     """Информация о событии для админа"""
-#     date = convert_date(event.date)
-#     time = convert_time(event.date)
-#     user_registered_count = len(event.users_registered)
-#
-#     message = f"📅 <b>{date} {time}</b>\n\n" \
-#               f"<b>\"{event.type}\"</b>\n" \
-#               f"{event.title}\n" \
-#               f"Минимальный уровень: {settings.levels[event.level]}\n\n" \
-#               f"👥 Участников: {user_registered_count}/{event.places} (<b>свободных мест {event.places - user_registered_count}</b>)\n\n"\
-#               f"💰 Цена: {event.price} руб.\n\n" \
-#
-#
-#     if event.users_registered:
-#         message += "Участники:\n"
-#         for idx, user in enumerate(event.users_registered, 1):
-#             message += f"<b>{idx}.</b> <a href='tg://user?id={user.tg_id}'>{user.firstname} {user.lastname}</a> " \
-#                        f"{f'({settings.levels[user.level]})' if user.level else ''}\n"
-#
-#         message += "\nДля перехода в диалог с участником нажмите на его имя\n" \
-#                    "Чтобы удалить участника с события, нажмите кнопку с соответствующим номером участника"
-#     # если участников нет
-#     else:
-#         message += "<b>Участников пока нет</b>"
-#
-#     return message
 
 
 def event_levels_card_for_admin_message(event: EventRel) -> str:
@@ -162,6 +111,21 @@ def notify_message(event: EventRel) -> str:
               f"Напоминаем, что вы записались на мероприятие <b>\"{event.title}\"</b>, " \
               f"которое пройдет <b>{event_date}</b> в <b>{event_time}</b>\n\n" \
               f"Если у вас не получится прийти, пожалуйста, сообщите об этом администратору @{settings.main_admin_url}"
+
+    return message
+
+
+def get_help_message() -> str:
+    """Сообщение для команды /help"""
+    message = "<b>Возможности бота:</b>\n" \
+              "- Принимает оплату за подписку (по карте (для СНГ) или по ссылке)\n" \
+              "- Осуществляет менеджмент приватных каналов/групп\n\n" \
+              "<b>Инструкция использования:</b>\n" \
+              "- Для перехода в главное меню отправьте команду /menu\n" \
+              "- Для покупки или продления подписки в главном меню нажмите \"Купить 💸\"\n" \
+              "- Для проверки своего статуса подписки в главном меню нажмите \"Статус 🎫\"\n\n" \
+              "<b>Контакт поддержки:</b>\n" \
+              f"Если у вас есть вопросы или предложения, свяжитесь с нашей поддержкой в телеграм: {settings.support_contact}"
 
     return message
 
