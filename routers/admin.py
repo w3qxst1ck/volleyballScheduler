@@ -356,7 +356,7 @@ async def event_level_choose_handler(callback: types.CallbackQuery) -> None:
 
 
 @router.callback_query(lambda callback: callback.data.split("_")[0] == "admin-add-user-level")
-async def event_level_choose_handler(callback: types.CallbackQuery) -> None:
+async def event_level_choose_handler(callback: types.CallbackQuery, bot: Bot) -> None:
     """Выбор уровня для конкретного участника"""
     event_id = int(callback.data.split("_")[1])
     user_id = int(callback.data.split("_")[2])
@@ -367,7 +367,12 @@ async def event_level_choose_handler(callback: types.CallbackQuery) -> None:
     event = await AsyncOrm.get_event_with_users(event_id)
     user = await AsyncOrm.get_user_by_id(user_id)
 
+    # message to admin
     await callback.message.edit_text(f"Уровень пользователя <b>{user.firstname} {user.lastname}</b> обновлен на {settings.levels[level]}")
+
+    # message to user
+    user_msg = ms.notify_set_level_message(level)
+    await bot.send_message(str(user.tg_id), user_msg)
 
     msg = ms.event_levels_card_for_admin_message(event)
     await callback.message.answer(msg, reply_markup=kb.event_levels_card_keyboard_admin(event).as_markup())

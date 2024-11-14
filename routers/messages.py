@@ -80,7 +80,7 @@ def event_levels_card_for_admin_message(event: EventRel) -> str:
 
         message += "Участники:\n"
         for idx, user in enumerate(event.users_registered, 1):
-            message += f"<b>{idx}.</b> {user.firstname} {user.lastname} " \
+            message += f"<b>{idx}.</b> <a href='tg://user?id={user.tg_id}'>{user.firstname} {user.lastname}</a> " \
                        f"{f'({settings.levels[user.level]})' if user.level else ''}\n"
 
         message += "\nЧтобы выставить уровень участника, нажмите кнопку с соответствующим номером участника"
@@ -99,6 +99,14 @@ def notify_deleted_user_message(event: EventRel) -> str:
     message = f"🔔 <i>Автоматическое уведомление</i>\n\n" \
               f"Администратор удалил вас из мероприятия <b>\"{date} {time} {event.title}\"</b>!\n\n" \
               f"Для уточнения деталей вы можете связаться с администратором @{settings.main_admin_url}"
+
+    return message
+
+
+def notify_set_level_message(level: int) -> str:
+    """Сообщение для автоматического уведомления о присвоении уровня"""
+    message = f"🔔 <i>Автоматическое уведомление</i>\n\n" \
+              f"Администратор присвоил вам уровень <b>\{settings.levels[level]}\</b>"
 
     return message
 
