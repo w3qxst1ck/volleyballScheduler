@@ -26,10 +26,15 @@ async def get_events_handler(message: types.Message | types.CallbackQuery) -> No
     """Получение всех событий"""
     events = await AsyncOrm.get_events()
 
-    if type(message) == types.Message:
-        await message.answer("События", reply_markup=kb.events_keyboard_admin(events).as_markup())
+    if events:
+        msg = "События"
     else:
-        await message.message.edit_text("События", reply_markup=kb.events_keyboard_admin(events).as_markup())
+        msg = "Событий пока нет"
+
+    if type(message) == types.Message:
+        await message.answer(msg, reply_markup=kb.events_keyboard_admin(events).as_markup())
+    else:
+        await message.message.edit_text(msg, reply_markup=kb.events_keyboard_admin(events).as_markup())
 
 
 # ADMIN EVENT CARD
@@ -320,10 +325,15 @@ async def choose_event_for_set_level_handler(message: types.Message) -> None:
     """Выбор мероприятия для назначения уровня пользователям"""
     events = await AsyncOrm.get_last_events()
 
-    if type(message) == types.Message:
-        await message.answer("Мероприятия за последние 3 дня", reply_markup=kb.events_levels_keyboard_admin(events).as_markup())
+    if events:
+        msg = "Мероприятия за последние 3 дня"
     else:
-        await message.message.edit_text("Мероприятия за последние 3 дня", reply_markup=kb.events_levels_keyboard_admin(events).as_markup())
+        msg = "Прошедших мероприятий для присвоения уровня нет"
+
+    if type(message) == types.Message:
+        await message.answer(msg, reply_markup=kb.events_levels_keyboard_admin(events).as_markup())
+    else:
+        await message.message.edit_text(msg, reply_markup=kb.events_levels_keyboard_admin(events).as_markup())
 
 
 @router.callback_query(lambda callback: callback.data.split("_")[0] == "admin-event-levels")
