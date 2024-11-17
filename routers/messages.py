@@ -37,7 +37,8 @@ def event_card_for_user_message(event: EventRel, payment: Payment | None) -> str
                f"{event.title}\n" \
                f"Минимальный уровень: {settings.levels[event.level]}\n\n" \
                f"💰 Цена: <b>{event.price} руб.</b>\n\n" \
-               f"👥 Участников: {user_registered_count}/{event.places} (<b>свободных мест {event.places - user_registered_count}</b>)\n\n"
+               f"👥 Участников: {user_registered_count}/{event.places} (<b>свободных мест {event.places - user_registered_count}</b>)\n" \
+               f"⚠️ Мин. кол-во участников: <b>{event.min_user_count}</b>\n\n"
 
     # если участники уже есть
     if event.users_registered:
@@ -121,6 +122,19 @@ def notify_message(event: EventRel) -> str:
               f"Если у вас не получится прийти, пожалуйста, сообщите об этом администратору @{settings.main_admin_url}"
 
     return message
+
+
+def notify_canceled_event(event: EventRel) -> str:
+    """Сообщение об отмене мероприятия в связи с нехваткой участников"""
+    event_date = convert_date(event.date)
+    event_time = convert_time(event.date)
+    message = f"🔔 <i>Автоматическое уведомление</i>\n\n" \
+              f"Мероприятие <b>\"{event.title}\"</b>, запланированное <b>{event_date}</b> в <b>{event_time}</b>, " \
+              f"<b>отменено<b> в связи с нехваткой участников\n\n" \
+              f"По вопросу возврата оплаты обращайтесь к администратору @{settings.main_admin_url}"
+
+    return message
+
 
 
 def get_help_message() -> str:

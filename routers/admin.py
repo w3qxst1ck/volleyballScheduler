@@ -248,7 +248,7 @@ async def add_event_date_handler(message: types.Message, state: FSMContext) -> N
             pass
         msg = await message.answer("Введено некорректное число\n\n"
                                    "Необходимо указать <b>число</b> без букв, знаков препинания и других символов "
-                                   "(например 8, 16 ил 24)", reply_markup=kb.cancel_keyboard().as_markup())
+                                   "(например 8, 16 или 24)", reply_markup=kb.cancel_keyboard().as_markup())
         await state.update_data(prev_mess=msg)
         return
 
@@ -261,8 +261,44 @@ async def add_event_date_handler(message: types.Message, state: FSMContext) -> N
     except TelegramBadRequest:
         pass
 
+    await state.set_state(AddEventFSM.min_count)
+
+    msg = await message.answer(
+        "Введите <b>минимальное</b> необходимое количество участников для мероприятия",
+        reply_markup=kb.cancel_keyboard().as_markup()
+    )
+    await state.update_data(prev_mess=msg)
+
+
+@router.message(AddEventFSM.min_count)
+async def add_min_count_users_handler(message: types.Message, state: FSMContext) -> None:
+    """Сохранение min_user_count, выбор level"""
+    min_user_count_str = message.text
+    data = await state.get_data()
+
+    # неправильное количество мин людей
+    if not utils.is_valid_places(min_user_count_str):
+        try:
+            await data["prev_mess"].delete()
+        except TelegramBadRequest:
+            pass
+        msg = await message.answer("Введено некорректное число\n\n"
+                                   "Необходимо указать <b>число</b> без букв, знаков препинания и других символов "
+                                   "(например 2, 4 или 8)", reply_markup=kb.cancel_keyboard().as_markup())
+        await state.update_data(prev_mess=msg)
+        return
+
+    # если количество мин людей правильное
+    await state.update_data(min_user_count=int(min_user_count_str))
+
+    # удаление прошлого сообщения
+    try:
+        await data["prev_mess"].delete()
+    except TelegramBadRequest:
+        pass
+
     await state.set_state(AddEventFSM.level)
-    msg = await message.answer(f"Выберите минимальный уровень участников мероприятия",
+    msg = await message.answer("Выберите минимальный уровень участников мероприятия",
                          reply_markup=kb.levels_keyboards().as_markup())
     await state.update_data(prev_mess=msg)
 
@@ -303,6 +339,7 @@ async def add_event_date_handler(message: types.Message, state: FSMContext) -> N
         title=data["title"],
         date=date_time,
         places=data["places"],
+        min_user_count=data["min_user_count"],
         level=data["level"],
         price=int(price_str)
     )

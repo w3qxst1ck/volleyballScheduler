@@ -276,7 +276,7 @@ class AsyncOrm:
             await session.commit()
 
     @staticmethod
-    async def update_event_status(event_id: int):
+    async def update_event_status_to_false(event_id: int):
         """Изменение статуса прошедшего события"""
         async with async_session_factory() as session:
             query = update(tables.Event)\

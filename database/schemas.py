@@ -20,6 +20,7 @@ class EventAdd(BaseModel):
     title: str
     date: datetime.datetime
     places: int
+    min_user_count: int
     level: int
     price: int
 
