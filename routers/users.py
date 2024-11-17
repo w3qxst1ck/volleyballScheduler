@@ -7,7 +7,7 @@ from aiogram.fsm.context import FSMContext
 
 from routers.middlewares import CheckPrivateMessageMiddleware
 from routers import keyboards as kb, messages as ms
-from routers.fsm_states import RegisterUserFSM
+from routers.fsm_states import RegisterUserFSM, UpdateUserFSM
 from database import schemas
 from database.orm import AsyncOrm
 from routers import utils
@@ -219,8 +219,6 @@ async def register_paid_event(callback: types.CallbackQuery, bot: Bot) -> None:
         reply_markup=kb.confirm_decline_keyboard(event_id, user_id).as_markup()
     )
 
-    # TODO как часто чистить оплаты UPD: зачем их чистить?
-
     await callback.message.edit_text(f"🔔 <i>Автоматическое уведомление</i>\n\n"
                                      f"Ваш платеж на сумму <b>{event.price}</b> руб. находится в обработке")
 
@@ -304,6 +302,65 @@ async def main_menu_handler(callback: types.CallbackQuery) -> None:
 
     message = ms.user_profile_message(user)
     await callback.message.edit_text(message, reply_markup=kb.user_profile_keyboard().as_markup())
+
+
+@router.callback_query(lambda callback: callback.data == "update_user_profile")
+async def update_user_profile(callback: types.CallbackQuery, state: FSMContext) -> None:
+    """Изменение имени пользователя во вкладке Профиль"""
+
+    await state.set_state(UpdateUserFSM.name)
+    msg = await callback.message.answer(
+        "Отправьте сообщением свои <b>имя</b> и <b>фамилию</b> (например Иван Иванов)",
+        reply_markup=kb.cancel_keyboard().as_markup()
+    )
+
+    await state.update_data(prev_mess=msg)
+
+
+@router.message(UpdateUserFSM.name)
+async def update_user_handler(message: types.Message, state: FSMContext) -> None:
+    """Изменение имени пользователя во вкладке Профиль"""
+
+    fullname = message.text
+
+    try:
+        # validation
+        firstname, lastname = await utils.get_firstname_lastname(fullname)
+        tg_id = str(message.from_user.id)
+
+        await AsyncOrm.update_user(tg_id, firstname, lastname)
+
+        data = await state.get_data()
+
+        try:
+            await data["prev_mess"].delete()
+        except TelegramBadRequest:
+            pass
+
+        await state.clear()
+
+        user = await AsyncOrm.get_user_by_tg_id(tg_id)
+
+        await message.answer("Данные успешно изменены ✅")
+
+        msg = ms.user_profile_message(user)
+        await message.answer(msg, reply_markup=kb.user_profile_keyboard().as_markup())
+
+    # ошибка введения данных
+    except utils.FullnameException:
+        msg = await message.answer(
+            "Необходимо ввести <b>имя и фамилию через пробел</b> без знаков препинания, символов "
+            "и цифр (например Иван Иванов)",
+            reply_markup=kb.cancel_keyboard().as_markup()
+        )
+
+        data = await state.get_data()
+        try:
+            await data["prev_mess"].delete()
+        except TelegramBadRequest:
+            pass
+
+        await state.update_data(prev_mess=msg)
 
 
 # HELP

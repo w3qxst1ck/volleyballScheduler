@@ -32,6 +32,18 @@ class AsyncOrm:
             await session.commit()
 
     @staticmethod
+    async def update_user(tg_id: str, firstname: str, lastname: str):
+        """Обновить ФИО пользователя"""
+        async with async_session_factory() as session:
+            query = update(tables.User) \
+                .where(tables.User.tg_id == tg_id) \
+                .values(firstname=firstname, lastname=lastname)
+
+            await session.execute(query)
+            await session.flush()
+            await session.commit()
+
+    @staticmethod
     async def get_user_by_id(user_id: int) -> schemas.User:
         """Получение tables.User по id"""
         async with async_session_factory() as session:

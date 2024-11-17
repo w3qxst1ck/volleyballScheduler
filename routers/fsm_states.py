@@ -13,3 +13,7 @@ class AddEventFSM(StatesGroup):
     places = State()
     level = State()
     price = State()
+
+
+class UpdateUserFSM(StatesGroup):
+    name = State()

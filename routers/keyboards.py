@@ -46,7 +46,7 @@ def events_keyboard(events: list[EventRel], user: User) -> InlineKeyboardBuilder
         if user in event.users_registered:
             registered = "✔️" + " "
 
-        keyboard.row(InlineKeyboardButton(text=f"{registered}{time} {event.title}", callback_data=f"user-event_{event.id}"))
+        keyboard.row(InlineKeyboardButton(text=f"{registered}{time} {event.type}", callback_data=f"user-event_{event.id}"))
 
     keyboard.adjust(1)
     return keyboard
@@ -78,6 +78,9 @@ def dates_keyboard(dates: dict[str:int]) -> InlineKeyboardBuilder:
 def user_profile_keyboard() -> InlineKeyboardBuilder:
     """Профиль пользователя"""
     keyboard = InlineKeyboardBuilder()
+    keyboard.row(
+        InlineKeyboardButton(text="📝 Изменить имя", callback_data=f"update_user_profile")
+    )
     return keyboard
 
 
@@ -91,7 +94,7 @@ def user_events(payments: list[PaymentsEventsUsers]) -> InlineKeyboardBuilder:
         status = "✅️" if payment.paid_confirm else "⏳"
 
         keyboard.row(InlineKeyboardButton(
-            text=f"{status} {date} {payment.event.title}",
+            text=f"{status} {date} {payment.event.type}",
             callback_data=f"my-events_{payment.id}")
         )
 
@@ -190,7 +193,7 @@ def events_keyboard_admin(events: list[Event]) -> InlineKeyboardBuilder:
 
     for event in events:
         date = convert_date(event.date)
-        keyboard.row(InlineKeyboardButton(text=f"{date} {event.title}", callback_data=f"admin-event_{event.id}"))
+        keyboard.row(InlineKeyboardButton(text=f"{date} {event.type}", callback_data=f"admin-event_{event.id}"))
 
     keyboard.adjust(1)
     return keyboard
@@ -238,7 +241,7 @@ def events_levels_keyboard_admin(events: list[Event]) -> InlineKeyboardBuilder:
 
     for event in events:
         date = convert_date(event.date)
-        keyboard.row(InlineKeyboardButton(text=f"{date} {event.title}", callback_data=f"admin-event-levels_{event.id}"))
+        keyboard.row(InlineKeyboardButton(text=f"{date} {event.type}", callback_data=f"admin-event-levels_{event.id}"))
 
     keyboard.adjust(1)
     return keyboard
