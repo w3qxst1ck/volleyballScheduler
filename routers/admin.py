@@ -99,15 +99,24 @@ async def event_delete_handler(callback: types.CallbackQuery) -> None:
 
 
 @router.callback_query(lambda callback: callback.data.split("_")[0] == "admin-event-delete-confirm")
-async def event_delete_confirmed_handler(callback: types.CallbackQuery) -> None:
+async def event_delete_confirmed_handler(callback: types.CallbackQuery, bot: Bot) -> None:
     """Удаление события админом"""
     event_id = int(callback.data.split("_")[1])
+    # получаем event заранее для оповещения пользователей о его удалении
+    events_with_users = await AsyncOrm.get_event_with_users(event_id)
+    # удаляем event
     await AsyncOrm.delete_event(event_id)
 
+    # оповещаем админа
     await callback.message.edit_text("Событие удалено ✅")
 
     events = await AsyncOrm.get_events()
     await callback.message.answer("События", reply_markup=kb.events_keyboard_admin(events).as_markup())
+
+    # оповещаем пользователей
+    msg = ms.notify_deleted_event(events_with_users)
+    for user in events_with_users.users_registered:
+        await bot.send_message(user.tg_id, msg)
 
 
 # ADD EVENT
