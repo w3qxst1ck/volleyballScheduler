@@ -162,11 +162,20 @@ class AsyncOrm:
             return event
 
     @staticmethod
-    async def get_events(only_active: bool = True) -> List[schemas.Event]:
+    async def get_events(only_active: bool = True, days_ahead: int = None) -> List[schemas.Event]:
         """Получение всех tables.Event"""
         async with async_session_factory() as session:
             if only_active:
-                query = select(tables.Event).where(tables.Event.active == True).order_by(tables.Event.date.asc())
+                if days_ahead:
+                    date_now = datetime.datetime.now(tz=pytz.timezone("Europe/Moscow"))
+                    query = select(tables.Event)\
+                        .where(and_(
+                            tables.Event.active == True,
+                            tables.Event.date.between(date_now.date(), (date_now + datetime.timedelta(days=days_ahead)).date())
+                        ))\
+                        .order_by(tables.Event.date.asc())
+                else:
+                    query = select(tables.Event).where(tables.Event.active == True).order_by(tables.Event.date.asc())
             else:
                 query = select(tables.Event).order_by(tables.Event.date.asc())
             result = await session.execute(query)

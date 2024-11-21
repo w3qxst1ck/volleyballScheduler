@@ -437,15 +437,23 @@ async def confirm_payment(callback: types.CallbackQuery, bot: Bot) -> None:
     event = await AsyncOrm.get_event_by_id(event_id)
     user = await AsyncOrm.get_user_by_id(user_id)
 
+    event_date = utils.convert_date(event.date)
+    event_time = utils.convert_time(event.date)
+
+    answer_text = f"Пользователь <a href='tg://user?id={user.tg_id}'>{user.firstname} {user.lastname}</a> " \
+                  f"оплатил <b>{event.type}</b> \"{event.title}\" <b>{event_date} {event_time}</b> " \
+                  f"на сумму <b>{event.price} руб.</b>\n\n"
+
     # подтверждение оплаты
     if confirm == "ok":
         # подтверждение оплаты
         await AsyncOrm.update_payment_status(event_id, user_id)
         # создание записи в таблице event_users
         await AsyncOrm.add_user_to_event(event_id, user_id)
+
         # сообщение админу
-        await callback.message.edit_text(callback.message.text)
-        await callback.message.answer("Оплата подтверждена ✅\nПользователь записан на мероприятие")
+        answer_ok = answer_text + "Оплата подтверждена ✅\nПользователь записан на мероприятие"
+        await callback.message.edit_text(answer_ok)
 
         # сообщение пользователю
         date = utils.convert_date(event.date)
@@ -456,13 +464,13 @@ async def confirm_payment(callback: types.CallbackQuery, bot: Bot) -> None:
     # отклонение оплаты
     else:
         # сообщение админу
-        await callback.message.edit_text(callback.message.text)
-        await callback.message.answer("Оплата отклонена ❌\nОповещение направлено пользователю")
+        answer_no = answer_text + "Оплата отклонена ❌\nОповещение направлено пользователю"
+        await callback.message.edit_text(answer_no)
 
         # удаление записи из таблицы payments
         await AsyncOrm.delete_payment(event_id, user_id)
 
         # сообщение пользователю
         msg = f"🔔 <i>Автоматическое уведомление</i>\n\n❌ Администратор оплату не подтвердил\n" \
-                       f"Вы можете связаться с администрацией канала\n@{settings.main_admin_url}"
+                       f"Вы можете связаться с администрацией канала @{settings.main_admin_url}"
         await bot.send_message(user.tg_id, msg)

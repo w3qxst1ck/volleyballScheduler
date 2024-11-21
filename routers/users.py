@@ -105,7 +105,7 @@ async def back_menu_handler(callback: types.CallbackQuery) -> None:
 @router.callback_query(lambda callback: callback.data.split("_")[1] == "all-events")
 async def user_events_dates_handler(callback: types.CallbackQuery) -> None:
     """Вывод дат с мероприятиями мероприятий"""
-    events = await AsyncOrm.get_events(only_active=True)
+    events = await AsyncOrm.get_events(only_active=True, days_ahead=11) # берем мероприятия за ближайших 10 дней
     events_dates = [event.date for event in events]
     unique_dates = utils.get_unique_dates(events_dates)
 
@@ -211,8 +211,12 @@ async def register_paid_event(callback: types.CallbackQuery, bot: Bot) -> None:
     user = await AsyncOrm.get_user_by_id(user_id)
     event = await AsyncOrm.get_event_by_id(event_id)
 
-    msg_to_admin = f"Пользователь <b>{user.firstname} {user.lastname}</b> оплатил {event.type} \"{event.title}\" " \
-                   f"на сумму {event.price} руб. \n\nПодтвердите или отклоните оплату"
+    event_date = utils.convert_date(event.date)
+    event_time = utils.convert_time(event.date)
+
+    msg_to_admin = f"Пользователь <a href='tg://user?id={user.tg_id}'>{user.firstname} {user.lastname}</a> " \
+                   f"оплатил <b>{event.type}</b> \"{event.title}\" <b>{event_date} {event_time}</b> " \
+                   f"на сумму <b>{event.price} руб.</b> \n\nПодтвердите или отклоните оплату"
     await bot.send_message(
         settings.settings.main_admin_tg_id,
         msg_to_admin,
@@ -223,8 +227,10 @@ async def register_paid_event(callback: types.CallbackQuery, bot: Bot) -> None:
                                      f"Ваш платеж на сумму <b>{event.price}</b> руб. находится в обработке")
 
     msg = "Дождитесь подтверждения оплаты от администратора\n\n" \
-          "Вы можете отслеживать статус оплаты во вкладке \"🏐 Мои мероприятия\""
-    await callback.message.answer(msg, reply_markup=kb.main_keyboard_or_my_events().as_markup())
+          "Вы можете отслеживать статус оплаты во вкладке \"👨🏻‍💻 Главное меню\" в разделе \"🏐 Мои мероприятия\""
+
+    await callback.message.answer(msg)
+    await callback.message.answer("Главное меню", reply_markup=kb.menu_users_keyboard().as_markup())
 
 
 # USER ALREADY REGISTERED EVENTS
