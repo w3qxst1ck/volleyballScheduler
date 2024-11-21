@@ -126,7 +126,7 @@ async def user_events_dates_handler(callback: types.CallbackQuery) -> None:
     events = await AsyncOrm.get_events_for_date(date)
 
     await callback.message.edit_text(
-        f"Мероприятия на <b>{date_str}</b>:\n\nМероприятия, на которые вы уже зарегистрированы, помечены '✔️'",
+        f"Мероприятия на <b>{date_str}</b>:\n\nМероприятия, на которые вы уже записаны, помечены '✔️'",
         reply_markup=kb.events_keyboard(events, user).as_markup()
     )
 
@@ -171,7 +171,7 @@ async def register_user_on_event(callback: types.CallbackQuery) -> None:
         if len(event_with_users.users_registered) >= event_with_users.places:
             payment = await AsyncOrm.get_payment_by_event_and_user(event_id, user.id)
             msg = ms.event_card_for_user_message(event_with_users, payment)
-            await callback.message.edit_text("❗Вы не можете зарегистрироваться на данное мероприятие, "
+            await callback.message.edit_text("❗Вы не можете записаться на данное мероприятие, "
                                              "так как свободных мест нет")
             await callback.message.answer(msg, reply_markup=kb.event_card_keyboard(event_id, user.id, payment,
                 f"events-date_{utils.convert_date(event_with_users.date)}").as_markup())
@@ -185,7 +185,7 @@ async def register_user_on_event(callback: types.CallbackQuery) -> None:
     else:
         payment = await AsyncOrm.get_payment_by_event_and_user(event_id, user.id)
         msg = ms.event_card_for_user_message(event_with_users, payment)
-        await callback.message.edit_text("❗Вы не можете зарегистрироваться на данное мероприятие, "
+        await callback.message.edit_text("❗Вы не можете записаться на данное мероприятие, "
                                          "так как ваш уровень ниже необходимого")
         await callback.message.answer(
             msg,
@@ -235,7 +235,7 @@ async def user_event_registered_handler(callback: types.CallbackQuery) -> None:
     active_events = list(filter(lambda payment: payment.event.active == True, payments))
 
     if not active_events:
-        msg = "Вы пока никуда не зарегистрировались\n\nВы можете это сделать во вкладке \n\"🗓️ Все мероприятия\""
+        msg = "Вы пока никуда не записаны\n\nВы можете это сделать во вкладке \n\"🗓️ Все мероприятия\""
     else:
         msg = "Мероприятия куда вы записывались:\n\n✅ - оплаченные мероприятия\n⏳ - ожидается подтверждение оплаты от администратора"
 
@@ -287,7 +287,7 @@ async def unregister_form_my_event_handler(callback: types.CallbackQuery) -> Non
     events = await AsyncOrm.get_user_payments_with_events_and_users(str(callback.from_user.id))
 
     if not events:
-        msg = "Вы пока никуда не зарегистрировались\n\nВы можете это сделать во вкладке \n\"🗓️ Все мероприятия\""
+        msg = "Вы пока никуда не записаны\n\nВы можете это сделать во вкладке \n\"🗓️ Все мероприятия\""
     else:
         msg = "Мероприятия куда вы записывались:\n\n✅ - оплаченные мероприятия\n⏳ - ожидается подтверждение оплаты от администратора"
 

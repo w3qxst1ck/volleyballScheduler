@@ -110,7 +110,7 @@ def my_event_card_keyboard(payment: Payment) -> InlineKeyboardBuilder:
     if payment.paid_confirm:
         keyboard.row(
             InlineKeyboardButton(
-                text=f"❌ Отменить регистрацию",
+                text=f"❌ Отменить запись",
                 callback_data=f"unreg-user_{payment.event_id}_{payment.user_id}"
             )
         )
@@ -126,7 +126,7 @@ def event_card_keyboard(event_id: int, user_id: int, payment: Payment | None, ba
 
     # пользователь еще не регистрировался
     if not payment:
-        keyboard.row(InlineKeyboardButton(text=f"✅ Зарегистрироваться", callback_data=f"reg-user_{event_id}_{user_id}"))
+        keyboard.row(InlineKeyboardButton(text=f"✅ Записаться", callback_data=f"reg-user_{event_id}_{user_id}"))
 
     keyboard.row(InlineKeyboardButton(text=f"🔙 назад", callback_data=f"{back_to}"))
 
