@@ -44,7 +44,7 @@ def events_keyboard(events: list[EventRel], user: User) -> InlineKeyboardBuilder
 
         registered = ""
         if user in event.users_registered:
-            registered = "✔️" + " "
+            registered = "✅️" + " "
 
         keyboard.row(InlineKeyboardButton(text=f"{registered}{time} {event.type}", callback_data=f"user-event_{event.id}"))
 

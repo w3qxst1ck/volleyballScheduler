@@ -1,5 +1,5 @@
 from database.schemas import User, EventRel, Event, PaymentsEventsUsers, Payment
-from routers.utils import convert_date, convert_time
+from routers.utils import convert_date, convert_time, convert_date_named_month
 from settings import settings
 
 
@@ -23,7 +23,7 @@ def user_profile_message(user: User) -> str:
 # актуальная карточка
 def event_card_for_user_message(event: EventRel, payment: Payment | None) -> str:
     """Информация о событии с его пользователями"""
-    date = convert_date(event.date)
+    date = convert_date_named_month(event.date)
     time = convert_time(event.date)
 
     user_registered_count = len(event.users_registered)

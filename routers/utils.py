@@ -40,6 +40,25 @@ def convert_date(date: datetime) -> str:
     return date.date().strftime("%d.%m.%Y")
 
 
+def convert_date_named_month(date: datetime) -> str:
+    """Перевод даты в дату с месяцем прописью"""
+    months = {
+        1: "января",
+        2: "февраля",
+        3: "марта",
+        4: "апреля",
+        5: "мая",
+        6: "июня",
+        7: "июля",
+        8: "августа",
+        9: "сентября",
+        10: "октября",
+        11: "ноября",
+        12: "декабря",
+    }
+    return f"{date.date().day} {months[date.date().month]} {date.date().strftime('%Y')}"
+
+
 def convert_time(date: datetime) -> str:
     """Перевод времени в формат для вывода"""
     return date.time().strftime("%H:%M")
