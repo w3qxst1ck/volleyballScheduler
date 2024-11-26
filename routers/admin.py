@@ -467,7 +467,7 @@ async def confirm_payment(callback: types.CallbackQuery, bot: Bot) -> None:
         # сообщение пользователю
         date = utils.convert_date(event.date)
         time = utils.convert_time(event.date)
-        msg = f"🔔 <i>Автоматическое уведомление</i>\n\nОплата прошла успешно ✅\nВы записаны на {event.type} \"{event.title} {date} в {time}\""
+        msg = f"🔔 <b>Автоматическое уведомление</b>\n\nОплата прошла успешно ✅\nВы записаны на {event.type} \"{event.title}\" {date} в {time}"
         await bot.send_message(user.tg_id, msg)
 
     # отклонение оплаты
@@ -480,6 +480,6 @@ async def confirm_payment(callback: types.CallbackQuery, bot: Bot) -> None:
         await AsyncOrm.delete_payment(event_id, user_id)
 
         # сообщение пользователю
-        msg = f"🔔 <i>Автоматическое уведомление</i>\n\n❌ Администратор оплату не подтвердил\n" \
+        msg = f"🔔 <b>Автоматическое уведомление</b>\n\n❌ Администратор оплату не подтвердил\n" \
                        f"Вы можете связаться с администрацией канала @{settings.main_admin_url}"
         await bot.send_message(user.tg_id, msg)

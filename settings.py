@@ -35,6 +35,7 @@ class Settings(BaseSettings):
     levels: dict = LEVELS
     expire_event_days: int = 14
     admin_phone: str
+    support_contact: str
     db: Database = Database()
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")

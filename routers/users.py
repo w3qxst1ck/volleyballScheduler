@@ -34,7 +34,7 @@ async def start_handler(message: types.Message, state: FSMContext) -> None:
 
         # /menu handler
         else:
-            await message.answer("Главное меню", reply_markup=kb.menu_users_keyboard().as_markup())
+            await message.answer(ms.main_menu_message(), reply_markup=kb.menu_users_keyboard().as_markup())
 
     # новый пользователь
     else:
@@ -72,7 +72,7 @@ async def add_user_handler(message: types.Message, state: FSMContext) -> None:
         await state.clear()
 
         await message.answer("Вы успешно зарегистрированы ✅")
-        await message.answer("Главное меню", reply_markup=kb.menu_users_keyboard().as_markup())
+        await message.answer(ms.main_menu_message(), reply_markup=kb.menu_users_keyboard().as_markup())
 
     # ошибка введения данных
     except utils.FullnameException:
@@ -95,10 +95,10 @@ async def add_user_handler(message: types.Message, state: FSMContext) -> None:
 async def back_menu_handler(callback: types.CallbackQuery) -> None:
     """Главное меню пользователя"""
     if type(callback) == types.Message:
-        await callback.answer("Главное меню", reply_markup=kb.menu_users_keyboard().as_markup())
+        await callback.answer(ms.main_menu_message(), reply_markup=kb.menu_users_keyboard().as_markup())
 
     else:
-        await callback.message.edit_text("Главное меню", reply_markup=kb.menu_users_keyboard().as_markup())
+        await callback.message.edit_text(ms.main_menu_message(), reply_markup=kb.menu_users_keyboard().as_markup())
 
 
 # ALL EVENTS
@@ -126,7 +126,7 @@ async def user_events_dates_handler(callback: types.CallbackQuery) -> None:
     events = await AsyncOrm.get_events_for_date(date)
 
     await callback.message.edit_text(
-        f"Мероприятия на <b>{date_str}</b>:\n\nМероприятия, на которые вы уже записаны, помечены '✔️'",
+        f"События на <b>{date_str}</b>:\n\nСобытия, на которые вы уже записаны, помечены '✔️'",
         reply_markup=kb.events_keyboard(events, user).as_markup()
     )
 
@@ -223,14 +223,15 @@ async def register_paid_event(callback: types.CallbackQuery, bot: Bot) -> None:
         reply_markup=kb.confirm_decline_keyboard(event_id, user_id).as_markup()
     )
 
-    await callback.message.edit_text(f"🔔 <i>Автоматическое уведомление</i>\n\n"
-                                     f"Ваш платеж на сумму <b>{event.price}</b> руб. находится в обработке")
+    await callback.message.edit_text(f"🔔 <b>Автоматическое уведомление</b>\n\n"
+                                     f"Ваш платеж на сумму {event.price} руб. ожидает подтверждение администратором. "
+                                     f"После подтверждения вам будет отправлено уведомление о записи на событие.")
 
-    msg = "Дождитесь подтверждения оплаты от администратора\n\n" \
-          "Вы можете отслеживать статус оплаты во вкладке \"👨🏻‍💻 Главное меню\" в разделе \"🏐 Мои мероприятия\""
+    msg = "⏳ <b>Дождитесь подтверждения оплаты от администратора</b>\n\n" \
+          "Вы можете отслеживать статус оплаты во вкладке \"👨🏻‍💻 Главное меню\" в разделе \"🏐 Мои события\""
 
     await callback.message.answer(msg)
-    await callback.message.answer("Главное меню", reply_markup=kb.menu_users_keyboard().as_markup())
+    await callback.message.answer(ms.main_menu_message(), reply_markup=kb.menu_users_keyboard().as_markup())
 
 
 # USER ALREADY REGISTERED EVENTS
@@ -243,7 +244,7 @@ async def user_event_registered_handler(callback: types.CallbackQuery) -> None:
     if not active_events:
         msg = "Вы пока никуда не записаны\n\nВы можете это сделать во вкладке \n\"🗓️ Все мероприятия\""
     else:
-        msg = "Мероприятия куда вы записывались:\n\n✅ - оплаченные мероприятия\n⏳ - ожидается подтверждение оплаты от администратора"
+        msg = "<b>События куда вы записались:</b>\n\n✅ - оплаченные мероприятия\n⏳ - ожидается подтверждение оплаты от администратора"
 
     await callback.message.edit_text(msg, reply_markup=kb.user_events(active_events).as_markup())
 
@@ -271,7 +272,7 @@ async def unregister_form_my_event_handler(callback: types.CallbackQuery) -> Non
     payment = await AsyncOrm.get_payment_by_event_and_user(event_id, user_id)
 
     await callback.message.edit_text(
-        f"Вы действительно хотите отменить запись на мероприятие <b>{event.type} \"{event.title}\"</b>?",
+        f"<b>Вы действительно хотите отменить свою запись на событие \"{event.type}\" {utils.convert_date(event.date)} в {utils.convert_time(event.date)}?</b>",
         reply_markup=kb.yes_no_keyboard_for_unreg_from_event(event_id, user_id, payment.id).as_markup()
     )
 
@@ -286,8 +287,8 @@ async def unregister_form_my_event_handler(callback: types.CallbackQuery) -> Non
     await AsyncOrm.delete_payment(event_id, user_id)
 
     event = await AsyncOrm.get_event_by_id(event_id)
-    await callback.message.edit_text(f"🔔 <i>Автоматическое уведомление</i>\n\n"
-                                     f"Вы отменили запись на мероприятие <b>{event.type} \"{event.title}\"</b>")
+    await callback.message.edit_text(f"🔔 <b>Автоматическое уведомление</b>\n\n"
+                                     f"<b>Вы отменили запись на событие \"{event.type}\" {utils.convert_date(event.date)} в {utils.convert_time(event.date)}</b>")
 
     # возврат ко вкладке мои мероприятия
     events = await AsyncOrm.get_user_payments_with_events_and_users(str(callback.from_user.id))
@@ -316,7 +317,7 @@ async def update_user_profile(callback: types.CallbackQuery, state: FSMContext) 
 
     await state.set_state(UpdateUserFSM.name)
     msg = await callback.message.answer(
-        "Отправьте сообщением свои <b>имя</b> и <b>фамилию</b> (например Иван Иванов)",
+        "<b>Пожалуйста, отправьте сообщением вашу Фамилию, Имя (например, Иванов Иван).</b>",
         reply_markup=kb.cancel_keyboard().as_markup()
     )
 
@@ -382,7 +383,7 @@ async def help_handler(message: types.Message) -> None:
 async def cancel_handler(callback: types.CallbackQuery, state: FSMContext):
     """Cancel FSM and delete last message"""
     await state.clear()
-    await callback.message.answer("Действие отменено ❌")
+    await callback.message.answer("<b>Действие отменено</b> ❌")
     try:
         await callback.message.delete()
     except TelegramBadRequest:

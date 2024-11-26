@@ -26,9 +26,9 @@ def back_button(callback_data: str):
 def menu_users_keyboard() -> InlineKeyboardBuilder:
     """Основное меню для пользователей"""
     keyboard = InlineKeyboardBuilder()
-    keyboard.row(InlineKeyboardButton(text="🗓️ Все мероприятия", callback_data=f"menu_all-events"))
-    keyboard.row(InlineKeyboardButton(text="👤 Профиль", callback_data=f"menu_profile"))
-    keyboard.row(InlineKeyboardButton(text="🏐 Мои мероприятия", callback_data=f"menu_my-events"))
+    keyboard.row(InlineKeyboardButton(text="🗓️ Все события", callback_data=f"menu_all-events"))
+    keyboard.row(InlineKeyboardButton(text="👤 Мой профиль", callback_data=f"menu_profile"))
+    keyboard.row(InlineKeyboardButton(text="🏐 Мои события", callback_data=f"menu_my-events"))
 
     keyboard.adjust(2)
     return keyboard
@@ -150,7 +150,7 @@ def payment_confirm_keyboard(user: User, event: Event) -> InlineKeyboardBuilder:
     keyboard = InlineKeyboardBuilder()
     keyboard.row(
         InlineKeyboardButton(
-            text="Оплатил", callback_data=f"paid_{user.id}_{event.id}"),
+            text="Оплатил(а)", callback_data=f"paid_{user.id}_{event.id}"),
     )
 
     keyboard.row(InlineKeyboardButton(text="🔙 назад", callback_data=f"user-event_{event.id}"))
