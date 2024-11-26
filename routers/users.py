@@ -39,7 +39,7 @@ async def start_handler(message: types.Message, state: FSMContext) -> None:
     # новый пользователь
     else:
         await state.set_state(RegisterUserFSM.name)
-        msg = await message.answer("Для записи на спортивные мероприятия необходимо зарегистрироваться\n\n"
+        msg = await message.answer("Для записи на спортивные события необходимо зарегистрироваться\n\n"
                                    "Отправьте сообщением свои <b>имя</b> и <b>фамилию</b> (например Иван Иванов)",
                                    reply_markup=kb.cancel_keyboard().as_markup())
         await state.update_data(prev_mess=msg)
@@ -109,9 +109,9 @@ async def user_events_dates_handler(callback: types.CallbackQuery) -> None:
     events_dates = [event.date for event in events]
     unique_dates = utils.get_unique_dates(events_dates)
 
-    msg = "Даты с мероприятиями:"
+    msg = "Даты с событиями:"
     if not events:
-        msg = "В ближайшее время нет мероприятий"
+        msg = "В ближайшее время нет событий"
 
     await callback.message.edit_text(msg, reply_markup=kb.dates_keyboard(unique_dates).as_markup())
 
@@ -171,7 +171,7 @@ async def register_user_on_event(callback: types.CallbackQuery) -> None:
         if len(event_with_users.users_registered) >= event_with_users.places:
             payment = await AsyncOrm.get_payment_by_event_and_user(event_id, user.id)
             msg = ms.event_card_for_user_message(event_with_users, payment)
-            await callback.message.edit_text("❗Вы не можете записаться на данное мероприятие, "
+            await callback.message.edit_text("❗Вы не можете записаться на данное событие, "
                                              "так как свободных мест нет")
             await callback.message.answer(msg, reply_markup=kb.event_card_keyboard(event_id, user.id, payment,
                 f"events-date_{utils.convert_date(event_with_users.date)}").as_markup())
@@ -185,7 +185,7 @@ async def register_user_on_event(callback: types.CallbackQuery) -> None:
     else:
         payment = await AsyncOrm.get_payment_by_event_and_user(event_id, user.id)
         msg = ms.event_card_for_user_message(event_with_users, payment)
-        await callback.message.edit_text("❗Вы не можете записаться на данное мероприятие, "
+        await callback.message.edit_text("❗Вы не можете записаться на данное событие, "
                                          "так как ваш уровень ниже необходимого")
         await callback.message.answer(
             msg,
@@ -242,9 +242,9 @@ async def user_event_registered_handler(callback: types.CallbackQuery) -> None:
     active_events = list(filter(lambda payment: payment.event.active == True, payments))
 
     if not active_events:
-        msg = "Вы пока никуда не записаны\n\nВы можете это сделать во вкладке \n\"🗓️ Все мероприятия\""
+        msg = "Вы пока никуда не записаны\n\nВы можете это сделать во вкладке \n\"🗓️ Все события\""
     else:
-        msg = "<b>События куда вы записались:</b>\n\n✅ - оплаченные мероприятия\n⏳ - ожидается подтверждение оплаты от администратора"
+        msg = "<b>События куда вы записались:</b>\n\n✅ - оплаченные события\n⏳ - ожидается подтверждение оплаты от администратора"
 
     await callback.message.edit_text(msg, reply_markup=kb.user_events(active_events).as_markup())
 
@@ -294,9 +294,9 @@ async def unregister_form_my_event_handler(callback: types.CallbackQuery) -> Non
     events = await AsyncOrm.get_user_payments_with_events_and_users(str(callback.from_user.id))
 
     if not events:
-        msg = "Вы пока никуда не записаны\n\nВы можете это сделать во вкладке \n\"🗓️ Все мероприятия\""
+        msg = "Вы пока никуда не записаны\n\nВы можете это сделать во вкладке \n\"🗓️ Все события\""
     else:
-        msg = "Мероприятия куда вы записывались:\n\n✅ - оплаченные мероприятия\n⏳ - ожидается подтверждение оплаты от администратора"
+        msg = "События куда вы записались:\n\n✅ - оплаченные события\n⏳ - ожидается подтверждение оплаты от администратора"
 
     await callback.message.answer(msg, reply_markup=kb.user_events(events).as_markup())
 

@@ -94,7 +94,7 @@ async def event_delete_handler(callback: types.CallbackQuery) -> None:
     date = utils.convert_date(event.date)
     time = utils.convert_time(event.date)
     await callback.message.edit_text(
-        f"Вы действительно хотите удалить мероприятие <b>{event.type} \"{event.title}\"</b> {date} в {time}?",
+        f"Вы действительно хотите удалить событие <b>{event.type} \"{event.title}\"</b> {date} в {time}?",
         reply_markup=kb.yes_no_keyboard_for_admin_delete_event(event_id).as_markup())
 
 
@@ -273,7 +273,7 @@ async def add_event_date_handler(message: types.Message, state: FSMContext) -> N
     await state.set_state(AddEventFSM.min_count)
 
     msg = await message.answer(
-        "Введите <b>минимальное</b> необходимое количество участников для мероприятия",
+        "Введите <b>минимальное</b> необходимое количество участников для события",
         reply_markup=kb.cancel_keyboard().as_markup()
     )
     await state.update_data(prev_mess=msg)
@@ -307,7 +307,7 @@ async def add_min_count_users_handler(message: types.Message, state: FSMContext)
         pass
 
     await state.set_state(AddEventFSM.level)
-    msg = await message.answer("Выберите минимальный уровень участников мероприятия",
+    msg = await message.answer("Выберите минимальный уровень участников события",
                          reply_markup=kb.levels_keyboards().as_markup())
     await state.update_data(prev_mess=msg)
 
@@ -319,7 +319,7 @@ async def add_event_date_handler(callback: types.CallbackQuery, state: FSMContex
     await state.update_data(level=level)
     await state.set_state(AddEventFSM.price)
 
-    await callback.message.edit_text("Введите цифрой цену мероприятия", reply_markup=kb.cancel_keyboard().as_markup())
+    await callback.message.edit_text("Введите цифрой цену события", reply_markup=kb.cancel_keyboard().as_markup())
 
 
 @router.message(AddEventFSM.price)
@@ -372,9 +372,9 @@ async def choose_event_for_set_level_handler(message: types.Message) -> None:
     events = await AsyncOrm.get_last_events()
 
     if events:
-        msg = "Мероприятия за последние 3 дня"
+        msg = "События за последние 3 дня"
     else:
-        msg = "Прошедших мероприятий для присвоения уровня нет"
+        msg = "Прошедших событий для присвоения уровня нет"
 
     if type(message) == types.Message:
         await message.answer(msg, reply_markup=kb.events_levels_keyboard_admin(events).as_markup())
@@ -461,7 +461,7 @@ async def confirm_payment(callback: types.CallbackQuery, bot: Bot) -> None:
         await AsyncOrm.add_user_to_event(event_id, user_id)
 
         # сообщение админу
-        answer_ok = answer_text + "Оплата подтверждена ✅\nПользователь записан на мероприятие"
+        answer_ok = answer_text + "Оплата подтверждена ✅\nПользователь записан на событие"
         await callback.message.edit_text(answer_ok)
 
         # сообщение пользователю

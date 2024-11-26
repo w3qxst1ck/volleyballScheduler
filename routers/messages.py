@@ -109,7 +109,7 @@ def notify_deleted_user_message(event: EventRel) -> str:
     date = convert_date(event.date)
     time = convert_time(event.date)
     message = f"🔔 <b>Автоматическое уведомление</b>\n\n" \
-              f"Администратор удалил вас из мероприятия <b>\"{date} {time} {event.title}\"</b>!\n\n" \
+              f"Администратор удалил вас из события <b>\"{date} {time} {event.title}\"</b>!\n\n" \
               f"Для уточнения деталей вы можете связаться с администратором @{settings.main_admin_url}"
 
     return message
@@ -128,7 +128,7 @@ def notify_message(event: EventRel) -> str:
     event_date = convert_date(event.date)
     event_time = convert_time(event.date)
     message = f"🔔 <b>Автоматическое уведомление</b>\n\n" \
-              f"Напоминаем, что вы записались на мероприятие <b>\"{event.title}\"</b>, " \
+              f"Напоминаем, что вы записались на событие <b>\"{event.title}\"</b>, " \
               f"которое пройдет <b>{event_date}</b> в <b>{event_time}</b>\n\n" \
               f"Если у вас не получится прийти, пожалуйста, сообщите об этом администратору @{settings.main_admin_url}"
 
@@ -140,7 +140,7 @@ def notify_canceled_event(event: EventRel) -> str:
     event_date = convert_date(event.date)
     event_time = convert_time(event.date)
     message = f"🔔 <b>Автоматическое уведомление</b>\n\n" \
-              f"Мероприятие <b>\"{event.title}\"</b>, запланированное <b>{event_date}</b> в <b>{event_time}</b>, " \
+              f"Событие <b>\"{event.title}\"</b>, запланированное <b>{event_date}</b> в <b>{event_time}</b>, " \
               f"<b>отменено</b> в связи с нехваткой участников\n\n" \
               f"По вопросу возврата оплаты обращайтесь к администратору @{settings.main_admin_url}"
 
@@ -152,7 +152,7 @@ def notify_deleted_event(event: EventRel) -> str:
     event_date = convert_date(event.date)
     event_time = convert_time(event.date)
     message = f"🔔 <b>Автоматическое уведомление</b>\n\n" \
-              f"Мероприятие <b>\"{event.title}\"</b>, запланированное <b>{event_date}</b> в <b>{event_time}</b>, " \
+              f"Событие <b>\"{event.title}\"</b>, запланированное <b>{event_date}</b> в <b>{event_time}</b>, " \
               f"<b>отменено администратором</b>\n\n" \
               f"По вопросу возврата оплаты обращайтесь к администратору @{settings.main_admin_url}"
 
