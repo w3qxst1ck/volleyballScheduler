@@ -317,9 +317,9 @@ async def update_user_profile(callback: types.CallbackQuery, state: FSMContext) 
     """Изменение имени пользователя во вкладке Профиль"""
 
     await state.set_state(UpdateUserFSM.name)
-    msg = await callback.message.answer(
+    msg = await callback.message.edit_text(
         "<b>Пожалуйста, отправьте сообщением вашу Фамилию, Имя (например, Иванов Иван).</b>",
-        reply_markup=kb.cancel_keyboard().as_markup()
+        reply_markup=kb.cancel_update_profile_keyboard().as_markup()
     )
 
     await state.update_data(prev_mess=msg)
@@ -377,6 +377,17 @@ async def help_handler(message: types.Message) -> None:
     """Help message"""
     msg = ms.get_help_message()
     await message.answer(msg)
+
+
+@router.callback_query(lambda callback: callback.data == "button_update_cancel", UpdateUserFSM.name)
+async def cancel_handler(callback: types.CallbackQuery, state: FSMContext):
+    """Cancel update profile"""
+    await state.clear()
+
+    user = await AsyncOrm.get_user_by_tg_id(str(callback.from_user.id))
+
+    message = ms.user_profile_message(user)
+    await callback.message.edit_text(message, reply_markup=kb.user_profile_keyboard().as_markup())
 
 
 # CANCEL BUTTON

@@ -286,6 +286,13 @@ def levels_keyboards() -> InlineKeyboardBuilder:
     return keyboard
 
 
+def cancel_update_profile_keyboard() -> InlineKeyboardBuilder:
+    """Клавиатура для отмены редактирования профиля"""
+    keyboard = InlineKeyboardBuilder()
+    keyboard.row(InlineKeyboardButton(text="❌ Отмена", callback_data="button_update_cancel"))
+    return keyboard
+
+
 def cancel_keyboard() -> InlineKeyboardBuilder:
     """Клавиатура для отмены создания пользователя админом"""
     keyboard = InlineKeyboardBuilder()
