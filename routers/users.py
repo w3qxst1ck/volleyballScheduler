@@ -293,13 +293,14 @@ async def unregister_form_my_event_handler(callback: types.CallbackQuery) -> Non
 
     # возврат ко вкладке мои мероприятия
     events = await AsyncOrm.get_user_payments_with_events_and_users(str(callback.from_user.id))
+    active_events = list(filter(lambda payment: payment.event.active == True, events))
 
-    if not events:
+    if not active_events:
         msg = "Вы пока никуда не записаны\n\nВы можете это сделать во вкладке \n\"🗓️ Все события\""
     else:
         msg = "События куда вы записались:\n\n✅ - оплаченные события\n⏳ - ожидается подтверждение оплаты от администратора"
 
-    await callback.message.answer(msg, reply_markup=kb.user_events(events).as_markup())
+    await callback.message.answer(msg, reply_markup=kb.user_events(active_events).as_markup())
 
 
 # USER PROFILE
