@@ -48,6 +48,7 @@ async def event_info_handler(callback: types.CallbackQuery) -> None:
 
     await callback.message.edit_text(
         msg,
+        disable_web_page_preview=True,
         reply_markup=kb.event_card_keyboard_admin(event).as_markup()
     )
 
