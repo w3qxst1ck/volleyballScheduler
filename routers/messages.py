@@ -47,8 +47,8 @@ def event_card_for_user_message(event: EventRel, payment: Payment | None) -> str
                f"  • <b>Минимальный уровень:</b> {settings.levels[event.level]}\n\n" \
                f"💰 <b>Стоимость участия:</b> {event.price} руб.\n" \
                f"👥 <b>Количество участников:</b> {user_registered_count}/{event.places} (доступно {event.places - user_registered_count} мест)\n" \
-               f"⚠️ <b>Минимальное количество участников:</b> {event.min_user_count}\n" \
-               f"📍 <b>Адрес:</b> <a href='https://yandex.ru/navi/org/volleyball_city/9644230187/?ll=30.333934%2C59.993168&z=16'>{settings.address}</a>\n\n"
+               f"⚠️ <b>Минимальное количество участников:</b> {event.min_user_count}\n\n" \
+               # f"📍 <b>Адрес:</b> <a href='https://yandex.ru/navi/org/volleyball_city/9644230187/?ll=30.333934%2C59.993168&z=16'>{settings.address}</a>\n\n"
 
     # если участники уже есть
     if event.users_registered:
