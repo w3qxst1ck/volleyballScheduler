@@ -6,7 +6,7 @@ from functools import wraps
 from typing import Callable
 
 from database.schemas import Event, User, EventRel, PaymentsEventsUsers, Payment
-from routers.utils import convert_date
+from routers.utils import convert_date, convert_time
 from settings import settings
 
 
@@ -193,7 +193,8 @@ def events_keyboard_admin(events: list[Event]) -> InlineKeyboardBuilder:
 
     for event in events:
         date = convert_date(event.date)
-        keyboard.row(InlineKeyboardButton(text=f"{date} {event.type}", callback_data=f"admin-event_{event.id}"))
+        time = convert_time(event.date)
+        keyboard.row(InlineKeyboardButton(text=f"{date} {time} {event.type}", callback_data=f"admin-event_{event.id}"))
 
     keyboard.adjust(1)
     return keyboard
