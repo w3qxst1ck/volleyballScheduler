@@ -36,6 +36,7 @@ class Settings(BaseSettings):
     expire_event_days: int = 14
     admin_phone: str
     support_contact: str
+    address: str = "Санкт-Петербург, Институтский пер., 5Н"
     db: Database = Database()
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")

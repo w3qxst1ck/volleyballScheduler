@@ -148,6 +148,7 @@ async def user_event_handler(callback: types.CallbackQuery) -> None:
 
     await callback.message.edit_text(
         msg,
+        disable_web_page_preview=True,
         reply_markup=kb.event_card_keyboard(
             event_id,
             user.id,
@@ -174,13 +175,13 @@ async def register_user_on_event(callback: types.CallbackQuery) -> None:
             msg = ms.event_card_for_user_message(event_with_users, payment)
             await callback.message.edit_text("❗Вы не можете записаться на данное событие, "
                                              "так как свободных мест нет")
-            await callback.message.answer(msg, reply_markup=kb.event_card_keyboard(event_id, user.id, payment,
+            await callback.message.answer(msg, disable_web_page_preview=True, reply_markup=kb.event_card_keyboard(event_id, user.id, payment,
                 f"events-date_{utils.convert_date(event_with_users.date)}").as_markup())
 
         # если места есть
         else:
             msg = ms.invoice_message_for_user(event_with_users)
-            await callback.message.edit_text(msg, reply_markup=kb.payment_confirm_keyboard(user, event_with_users).as_markup())
+            await callback.message.edit_text(msg, disable_web_page_preview=True, reply_markup=kb.payment_confirm_keyboard(user, event_with_users).as_markup())
 
     # если уровень ниже
     else:
@@ -190,6 +191,7 @@ async def register_user_on_event(callback: types.CallbackQuery) -> None:
                                          "так как ваш уровень ниже необходимого")
         await callback.message.answer(
             msg,
+            disable_web_page_preview=True,
             reply_markup=kb.event_card_keyboard(
                 event_id,
                 user.id,
@@ -260,7 +262,7 @@ async def my_event_info_handler(callback: types.CallbackQuery) -> None:
 
     msg = ms.event_card_for_user_message(event, payment)
 
-    await callback.message.edit_text(msg, reply_markup=kb.my_event_card_keyboard(payment).as_markup())
+    await callback.message.edit_text(msg, disable_web_page_preview=True, reply_markup=kb.my_event_card_keyboard(payment).as_markup())
 
 
 @router.callback_query(lambda callback: callback.data.split("_")[0] == "unreg-user")
