@@ -48,6 +48,7 @@ async def event_info_handler(callback: types.CallbackQuery) -> None:
 
     await callback.message.edit_text(
         msg,
+        disable_web_page_preview=True,
         reply_markup=kb.event_card_keyboard_admin(event).as_markup()
     )
 
@@ -82,7 +83,7 @@ async def event_delete_user_handler(callback: types.CallbackQuery, bot: Bot) -> 
     # возврат к карточке мероприятия
     msg_for_admin = ms.event_card_for_user_message(event, payment=None)
     msg_for_admin += "\nЧтобы удалить участника с события, нажмите кнопку с соответствующим номером участника"
-    await callback.message.answer(msg_for_admin, reply_markup=kb.event_card_keyboard_admin(event).as_markup())
+    await callback.message.answer(msg_for_admin, disable_web_page_preview=True, reply_markup=kb.event_card_keyboard_admin(event).as_markup())
 
 
 @router.callback_query(lambda callback: callback.data.split("_")[0] == "admin-event-delete")

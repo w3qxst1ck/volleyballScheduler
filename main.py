@@ -50,7 +50,7 @@ async def start_bot() -> None:
     scheduler.add_job(apsched.run_every_day, trigger="cron", year='*', month='*', day="*", hour=9, minute=0,
                       second=0, start_date=datetime.now(), kwargs={"bot": bot})
     # проверка мероприятия на минимальное кол-во участников
-    scheduler.add_job(apsched.run_every_hour, trigger="cron", year='*', month='*', day="*", hour="*", minute="*",
+    scheduler.add_job(apsched.run_every_hour, trigger="cron", year='*', month='*', day="*", hour="*", minute=1,
                       second=0, start_date=datetime.now(), kwargs={"bot": bot})
 
     scheduler.start()

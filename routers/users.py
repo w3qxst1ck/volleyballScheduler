@@ -148,6 +148,7 @@ async def user_event_handler(callback: types.CallbackQuery) -> None:
 
     await callback.message.edit_text(
         msg,
+        disable_web_page_preview=True,
         reply_markup=kb.event_card_keyboard(
             event_id,
             user.id,
@@ -174,13 +175,13 @@ async def register_user_on_event(callback: types.CallbackQuery) -> None:
             msg = ms.event_card_for_user_message(event_with_users, payment)
             await callback.message.edit_text("❗Вы не можете записаться на данное событие, "
                                              "так как свободных мест нет")
-            await callback.message.answer(msg, reply_markup=kb.event_card_keyboard(event_id, user.id, payment,
+            await callback.message.answer(msg, disable_web_page_preview=True, reply_markup=kb.event_card_keyboard(event_id, user.id, payment,
                 f"events-date_{utils.convert_date(event_with_users.date)}").as_markup())
 
         # если места есть
         else:
             msg = ms.invoice_message_for_user(event_with_users)
-            await callback.message.edit_text(msg, reply_markup=kb.payment_confirm_keyboard(user, event_with_users).as_markup())
+            await callback.message.edit_text(msg, disable_web_page_preview=True, reply_markup=kb.payment_confirm_keyboard(user, event_with_users).as_markup())
 
     # если уровень ниже
     else:
@@ -190,6 +191,7 @@ async def register_user_on_event(callback: types.CallbackQuery) -> None:
                                          "так как ваш уровень ниже необходимого")
         await callback.message.answer(
             msg,
+            disable_web_page_preview=True,
             reply_markup=kb.event_card_keyboard(
                 event_id,
                 user.id,
@@ -260,7 +262,7 @@ async def my_event_info_handler(callback: types.CallbackQuery) -> None:
 
     msg = ms.event_card_for_user_message(event, payment)
 
-    await callback.message.edit_text(msg, reply_markup=kb.my_event_card_keyboard(payment).as_markup())
+    await callback.message.edit_text(msg, disable_web_page_preview=True, reply_markup=kb.my_event_card_keyboard(payment).as_markup())
 
 
 @router.callback_query(lambda callback: callback.data.split("_")[0] == "unreg-user")
@@ -279,7 +281,7 @@ async def unregister_form_my_event_handler(callback: types.CallbackQuery) -> Non
 
 
 @router.callback_query(lambda callback: callback.data.split("_")[0] == "unreg-user-confirmed")
-async def unregister_form_my_event_handler(callback: types.CallbackQuery) -> None:
+async def unregister_form_my_event_handler(callback: types.CallbackQuery, bot: Bot) -> None:
     """Подтверждение отмены регистрации на событие в Моих мероприятиях"""
     event_id = int(callback.data.split("_")[1])
     user_id = int(callback.data.split("_")[2])
@@ -288,6 +290,7 @@ async def unregister_form_my_event_handler(callback: types.CallbackQuery) -> Non
     await AsyncOrm.delete_payment(event_id, user_id)
 
     event = await AsyncOrm.get_event_by_id(event_id)
+    # оповещение пользователя
     await callback.message.edit_text(f"🔔 <b>Автоматическое уведомление</b>\n\n"
                                      f"<b>Вы отменили запись на событие \"{event.type}\" {utils.convert_date(event.date)} в {utils.convert_time(event.date)}</b>")
 
@@ -301,6 +304,16 @@ async def unregister_form_my_event_handler(callback: types.CallbackQuery) -> Non
         msg = "События куда вы записались:\n\n✅ - оплаченные события\n⏳ - ожидается подтверждение оплаты от администратора"
 
     await callback.message.answer(msg, reply_markup=kb.user_events(active_events).as_markup())
+
+    # оповещение админа
+    user = await AsyncOrm.get_user_by_id(user_id)
+    admin_message = f"🔔 <b>Автоматическое уведомление</b>\n\n" \
+                    f"Пользователь <b>{user.username} {user.lastname}</b> отменил запись на <b>{event.type}</b> {event.title} на " \
+                    f"<b>{utils.convert_date(event.date)}</b> в <b>{utils.convert_time(event.date)}</b>"
+    try:
+        await bot.send_message(settings.settings.main_admin_tg_id, admin_message)
+    except:
+        pass
 
 
 # USER PROFILE
