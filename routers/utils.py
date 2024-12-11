@@ -3,6 +3,8 @@ from typing import List
 
 import pytz
 
+from settings import settings
+
 
 class FullnameException(Exception):
     """Ошибка валидации имени и фамилии"""
@@ -136,6 +138,13 @@ def get_unique_dates(dates: list[datetime]) -> dict[str:int]:
             result[converted_date] += 1
 
     return result
+
+
+def get_weekday_from_date(date_str: str) -> str:
+    """Получение дня недели из str даты в формате DD.MM.YYYY для использования в списке событий для пользователей"""
+    date = datetime.strptime(date_str, "%d.%m.%Y").date()
+    weekday = settings.weekdays[datetime.weekday(date)]
+    return weekday
 
 
 

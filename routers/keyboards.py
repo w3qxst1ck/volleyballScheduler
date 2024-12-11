@@ -6,7 +6,7 @@ from functools import wraps
 from typing import Callable
 
 from database.schemas import Event, User, EventRel, PaymentsEventsUsers, Payment
-from routers.utils import convert_date, convert_time
+from routers.utils import convert_date, convert_time, get_weekday_from_date
 from settings import settings
 
 
@@ -58,6 +58,7 @@ def dates_keyboard(dates: dict[str:int]) -> InlineKeyboardBuilder:
     keyboard = InlineKeyboardBuilder()
 
     for key in dates.keys():
+        weekday = get_weekday_from_date(key)
         count = dates[key]
         if count == 1:
             events = "мероприятие"
@@ -68,7 +69,7 @@ def dates_keyboard(dates: dict[str:int]) -> InlineKeyboardBuilder:
 
         keyboard.row(
 
-            InlineKeyboardButton(text=f"{key} ({count} {events})", callback_data=f"events-date_{key}"))
+            InlineKeyboardButton(text=f"{key} {weekday} ({count} {events})", callback_data=f"events-date_{key}"))
 
     keyboard.adjust(1)
     return keyboard
