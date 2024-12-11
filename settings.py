@@ -11,6 +11,16 @@ LEVELS = {
     7: "🏆 Хард",
 }
 
+WEEKDAYS = {
+    0: "Пн",
+    1: "Вт",
+    2: "Ср",
+    3: "Чт",
+    4: "Пн",
+    5: "Сб",
+    6: "Вс",
+}
+
 
 class Database(BaseSettings):
     postgres_user: str
@@ -32,6 +42,7 @@ class Settings(BaseSettings):
     main_admin_url: str
     main_admin_tg_id: str
     levels: dict = LEVELS
+    weekdays: dict = WEEKDAYS
     expire_event_days: int = 14
     admin_phone: str
     support_contact: str

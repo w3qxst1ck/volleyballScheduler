@@ -1,6 +1,7 @@
 from database.schemas import User, EventRel, Event, PaymentsEventsUsers, Payment
 from routers.utils import convert_date, convert_time, convert_date_named_month
 from settings import settings
+import datetime
 
 
 def main_menu_message() -> str:
@@ -25,10 +26,11 @@ def event_card_for_user_message(event: EventRel, payment: Payment | None) -> str
     """Информация о событии с его пользователями"""
     date = convert_date_named_month(event.date)
     time = convert_time(event.date)
+    weekday = settings.weekdays[datetime.datetime.weekday(event.date)]
 
     user_registered_count = len(event.users_registered)
 
-    message = f"📅 <b>{date}, {time}</b>\n"
+    message = f"📅 <b>{date}, {time} ({weekday})</b>\n"
 
     # пользователь еще не регистрировался
     if not payment:

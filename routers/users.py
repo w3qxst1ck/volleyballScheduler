@@ -122,12 +122,13 @@ async def user_events_dates_handler(callback: types.CallbackQuery) -> None:
     date_str = callback.data.split("_")[1]
     date = datetime.strptime(date_str, "%d.%m.%Y")
     converted_date = utils.convert_date_named_month(date)
+    weekday = settings.settings.weekdays[datetime.weekday(date)]
 
     user = await AsyncOrm.get_user_by_tg_id(str(callback.from_user.id))
     events = await AsyncOrm.get_events_for_date(date)
 
     await callback.message.edit_text(
-        f"События на <b>{converted_date}</b>:\n\nСобытия, на которые вы уже записаны, помечены '✅️'",
+        f"События на <b>{converted_date} ({weekday})</b>:\n\nСобытия, на которые вы уже записаны, помечены '✅️'",
         reply_markup=kb.events_keyboard(events, user).as_markup()
     )
 

@@ -91,10 +91,11 @@ def user_events(payments: list[PaymentsEventsUsers]) -> InlineKeyboardBuilder:
 
     for payment in payments:
         date = convert_date(payment.event.date)
+        weekday = settings.weekdays[datetime.datetime.weekday(payment.event.date)]
         status = "✅️" if payment.paid_confirm else "⏳"
 
         keyboard.row(InlineKeyboardButton(
-            text=f"{status} {date} {payment.event.type}",
+            text=f"{status} {date} ({weekday}) {payment.event.type}",
             callback_data=f"my-events_{payment.id}")
         )
 
