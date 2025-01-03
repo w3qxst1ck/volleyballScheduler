@@ -20,7 +20,7 @@ async def check_min_users_count(bot: aiogram.Bot):
     now = datetime.datetime.now(tz=pytz.timezone("Europe/Moscow"))
 
     for event in active_events:
-        if now + datetime.timedelta(hours=2) > event.date.astimezone(tz=pytz.timezone("Europe/Moscow")):
+        if now + datetime.timedelta(hours=2) > event.date.astimezone(tz=pytz.timezone("Europe/Moscow")) - datetime.timedelta(hours=4):
             event_with_users = await AsyncOrm.get_event_with_users(event.id)
             user_registered_count = len(event_with_users.users_registered)
 
@@ -45,7 +45,7 @@ async def update_events():
     """Изменение статуса прошедших событий"""
     events = await AsyncOrm.get_events()
     for event in events:
-        if datetime.datetime.now(tz=pytz.timezone("Europe/Moscow")) > event.date.astimezone(tz=pytz.timezone("Europe/Moscow")):
+        if datetime.datetime.now(tz=pytz.timezone("Europe/Moscow")) > event.date.astimezone(tz=pytz.timezone("Europe/Moscow")) - datetime.timedelta(hours=3):
             await AsyncOrm.update_event_status_to_false(event.id)
 
 
