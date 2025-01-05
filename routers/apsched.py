@@ -20,9 +20,9 @@ async def check_min_users_count(bot: aiogram.Bot):
     now = datetime.datetime.now(tz=pytz.timezone("Europe/Moscow"))
 
     for event in active_events:
-        print(f"Время now + 2 hours: {now}")
-        print(f"Время event.date with timezone + 4 hours: {event.date.astimezone(tz=pytz.timezone('Europe/Moscow')) - datetime.timedelta(hours=4)}")
-        if now + datetime.timedelta(hours=2) > event.date.astimezone(tz=pytz.timezone("Europe/Moscow")) - datetime.timedelta(hours=4):
+        print(f"Время now MSC: {now}")
+        print(f"Время event.date with timezone - 5 hours: {event.date.astimezone(tz=pytz.timezone('Europe/Moscow')) - datetime.timedelta(hours=5)}")
+        if now + datetime.timedelta(hours=2) > event.date.astimezone(tz=pytz.timezone("Europe/Moscow")) - datetime.timedelta(hours=5):
             event_with_users = await AsyncOrm.get_event_with_users(event.id)
             user_registered_count = len(event_with_users.users_registered)
 
