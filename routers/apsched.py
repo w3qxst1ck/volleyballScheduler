@@ -20,10 +20,10 @@ async def check_min_users_count(bot: aiogram.Bot):
     now = datetime.datetime.now(tz=pytz.timezone("Europe/Moscow"))
 
     for event in active_events:
-        print(f"Время now MSC+7 hours: {now + datetime.timedelta(hours=7)}")
-        print(f"Время event.date with timezone - 3 hours: {event.date.astimezone(tz=pytz.timezone('Europe/Moscow')) - datetime.timedelta(hours=3)}")
-        print(now + datetime.timedelta(hours=7) > event.date.astimezone(tz=pytz.timezone("Europe/Moscow")) - datetime.timedelta(hours=3))
-        if now + datetime.timedelta(hours=2, seconds=10) > event.date.astimezone(tz=pytz.timezone("Europe/Moscow")) - datetime.timedelta(hours=3):
+        # now + datetime.timedelta(hours=2, seconds=10) - текущее время + 2 часа
+        # event.date.astimezone(tz=pytz.timezone("Europe/Moscow")) - datetime.timedelta(hours=3) - перевод даты в текущее время по мск
+        if now + datetime.timedelta(hours=2, seconds=10) > \
+                event.date.astimezone(tz=pytz.timezone("Europe/Moscow")) - datetime.timedelta(hours=3):
             event_with_users = await AsyncOrm.get_event_with_users(event.id)
             user_registered_count = len(event_with_users.users_registered)
 
@@ -48,6 +48,7 @@ async def update_events():
     """Изменение статуса прошедших событий"""
     events = await AsyncOrm.get_events()
     for event in events:
+        print(event.date.astimezone(tz=pytz.timezone("Europe/Moscow")) - datetime.timedelta(hours=3))
         if datetime.datetime.now(tz=pytz.timezone("Europe/Moscow")) > event.date.astimezone(tz=pytz.timezone("Europe/Moscow")) - datetime.timedelta(hours=3):
             await AsyncOrm.update_event_status_to_false(event.id)
 
