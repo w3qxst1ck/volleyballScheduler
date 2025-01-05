@@ -48,8 +48,10 @@ async def update_events():
     """Изменение статуса прошедших событий"""
     events = await AsyncOrm.get_events()
     for event in events:
-        print(event.date.astimezone(tz=pytz.timezone("Europe/Moscow")) - datetime.timedelta(hours=3))
-        if datetime.datetime.now(tz=pytz.timezone("Europe/Moscow")) > event.date.astimezone(tz=pytz.timezone("Europe/Moscow")) - datetime.timedelta(hours=3):
+        # сравниваем текущее время + 1 ч с временем события
+        # перевод события в неактивное через 1 ч после его начала
+        if datetime.datetime.now(tz=pytz.timezone("Europe/Moscow")) + datetime.timedelta(hours=1) > \
+                event.date.astimezone(tz=pytz.timezone("Europe/Moscow")) - datetime.timedelta(hours=3):
             await AsyncOrm.update_event_status_to_false(event.id)
 
 
