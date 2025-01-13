@@ -208,19 +208,28 @@ async def register_paid_event(callback: types.CallbackQuery, bot: Bot) -> None:
     user_id = int(callback.data.split("_")[1])
     event_id = int(callback.data.split("_")[2])
 
+    user = await AsyncOrm.get_user_by_id(user_id)
+    event = await AsyncOrm.get_event_by_id(event_id)
+
+    # если мероприятие уже неактивно
+    if not event.active:
+        await callback.message.edit_text(
+            "⚠️ Запись невозможна, так как данное событие уже недоступно\n\nВы можете посмотреть доступные"
+            " события в главном меню /menu во вкладке \"🗓️ Все события\"",
+        )
+        return
+
     # создание платежа в БД
     await AsyncOrm.create_payments(user_id, event_id)
 
     # оповещение администратора
-    user = await AsyncOrm.get_user_by_id(user_id)
-    event = await AsyncOrm.get_event_by_id(event_id)
-
     event_date = utils.convert_date(event.date)
     event_time = utils.convert_time(event.date)
 
     msg_to_admin = f"Пользователь <a href='tg://user?id={user.tg_id}'>{user.firstname} {user.lastname}</a> " \
                    f"оплатил <b>{event.type}</b> \"{event.title}\" <b>{event_date} {event_time}</b> " \
                    f"на сумму <b>{event.price} руб.</b> \n\nПодтвердите или отклоните оплату"
+
     await bot.send_message(
         settings.settings.main_admin_tg_id,
         msg_to_admin,
