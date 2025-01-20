@@ -145,6 +145,9 @@ async def user_event_handler(callback: types.CallbackQuery) -> None:
 
     payment = await AsyncOrm.get_payment_by_event_and_user(event_id, user.id)
 
+    # check full Event or not
+    full_event: bool = len(event_with_users.users_registered) == event_with_users.places
+
     msg = ms.event_card_for_user_message(event_with_users, payment)
 
     await callback.message.edit_text(
@@ -155,13 +158,14 @@ async def user_event_handler(callback: types.CallbackQuery) -> None:
             user.id,
             payment,
             f"events-date_{utils.convert_date(event_with_users.date)}",
+            full_event,
         ).as_markup()
     )
 
 
-@router.callback_query(lambda callback: callback.data.split("_")[0] == "reg-user")
-async def register_user_on_event(callback: types.CallbackQuery) -> None:
-    """Регистрация пользователя на мероприятие"""
+@router.callback_query(lambda callback: callback.data.split("_")[0] == "reg-user-reserve")
+async def register_user_to_reserve(callback: types.CallbackQuery) -> None:
+    """Запись пользователя в резерв"""
     event_id = int(callback.data.split("_")[1])
     user_id = int(callback.data.split("_")[2])
 
@@ -170,19 +174,14 @@ async def register_user_on_event(callback: types.CallbackQuery) -> None:
 
     # если уровень соответствует
     if not user.level or user.level >= event_with_users.level:
-        # если нет свободных мест
-        if len(event_with_users.users_registered) >= event_with_users.places:
-            payment = await AsyncOrm.get_payment_by_event_and_user(event_id, user.id)
-            msg = ms.event_card_for_user_message(event_with_users, payment)
-            await callback.message.edit_text("❗Вы не можете записаться на данное событие, "
-                                             "так как свободных мест нет")
-            await callback.message.answer(msg, disable_web_page_preview=True, reply_markup=kb.event_card_keyboard(event_id, user.id, payment,
-                f"events-date_{utils.convert_date(event_with_users.date)}").as_markup())
+        msg = ms.invoice_message_for_user(event_with_users, to_reserve=True)
 
-        # если места есть
-        else:
-            msg = ms.invoice_message_for_user(event_with_users)
-            await callback.message.edit_text(msg, disable_web_page_preview=True, reply_markup=kb.payment_confirm_keyboard(user, event_with_users).as_markup())
+        await callback.message.edit_text(msg,
+                                         disable_web_page_preview=True,
+                                         reply_markup=kb.payment_confirm_keyboard(
+                                             user,
+                                             event_with_users
+                                         ).as_markup())
 
     # если уровень ниже
     else:
@@ -197,7 +196,45 @@ async def register_user_on_event(callback: types.CallbackQuery) -> None:
                 event_id,
                 user.id,
                 payment,
-                f"events-date_{utils.convert_date(event_with_users.date)}"
+                f"events-date_{utils.convert_date(event_with_users.date)}",
+                full_event=True
+            ).as_markup()
+        )
+
+
+@router.callback_query(lambda callback: callback.data.split("_")[0] == "reg-user")
+async def register_user_on_event(callback: types.CallbackQuery) -> None:
+    """Регистрация пользователя на мероприятие"""
+    event_id = int(callback.data.split("_")[1])
+    user_id = int(callback.data.split("_")[2])
+
+    event_with_users = await AsyncOrm.get_event_with_users(event_id)
+    user = await AsyncOrm.get_user_by_id(user_id)
+
+    # если уровень соответствует
+    if not user.level or user.level >= event_with_users.level:
+
+        msg = ms.invoice_message_for_user(event_with_users)
+        await callback.message.edit_text(
+            msg,
+            disable_web_page_preview=True,
+            reply_markup=kb.payment_confirm_keyboard(user, event_with_users).as_markup())
+
+    # если уровень ниже
+    else:
+        payment = await AsyncOrm.get_payment_by_event_and_user(event_id, user.id)
+        msg = ms.event_card_for_user_message(event_with_users, payment)
+        await callback.message.edit_text("❗Вы не можете записаться на данное событие, "
+                                         "так как ваш уровень ниже необходимого")
+        await callback.message.answer(
+            msg,
+            disable_web_page_preview=True,
+            reply_markup=kb.event_card_keyboard(
+                event_id,
+                user.id,
+                payment,
+                f"events-date_{utils.convert_date(event_with_users.date)}",
+                full_event=False
             ).as_markup()
         )
 

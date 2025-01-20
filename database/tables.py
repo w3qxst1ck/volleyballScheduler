@@ -37,6 +37,10 @@ class User(Base):
         back_populates="user",
     )
 
+    # reserved: Mapped[list["Reserved"]] = relationship(
+    #     back_populates="user"
+    # )
+
 
 class Event(Base):
     """Таблица для событий"""
@@ -60,6 +64,10 @@ class Event(Base):
     payments: Mapped[list["PaymentsUserEvent"]] = relationship(
         back_populates="event",
     )
+
+    # reserved: Mapped[list["Reserved"]] = relationship(
+    #     back_populates="event",
+    # )
 
 
 class EventsUsers(Base):
@@ -93,6 +101,19 @@ class PaymentsUserEvent(Base):
     user: Mapped["User"] = relationship(back_populates="payments")
 
 
+# class Reserved(Base):
+#     """Запасные пользователи для участия"""
+#
+#     __tablename__ = "reserved"
+#
+#     id: Mapped[int] = mapped_column(primary_key=True)
+#     date: Mapped[datetime.datetime] = mapped_column(server_default=text("TIMEZONE('utc', now())"))
+#
+#     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+#     user: Mapped["User"] = relationship(back_populates="reserved")
+#
+#     event_id: Mapped[int] = mapped_column(ForeignKey("events.id", ondelete="CASCADE"))
+#     event: Mapped["Event"] = relationship(back_populates="reserved")
 
 
 

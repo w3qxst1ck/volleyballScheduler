@@ -68,9 +68,15 @@ def event_card_for_user_message(event: EventRel, payment: Payment | None) -> str
 
 
 # PAYMENTS
-def invoice_message_for_user(event: Event) -> str:
+def invoice_message_for_user(event: Event, to_reserve: bool = False) -> str:
     """Сообщение о стоимости мероприятия"""
-    message = f"🗓 <b>Дата и время:</b> {convert_date(event.date)}, {convert_time(event.date)}\n"
+    message = ""
+
+    # если идет запись в резерв
+    if to_reserve:
+        message += f"📝 После оплаты вы будете записаны в <b>резерв</b>, если кто-то из участников отменит запись, вы автоматически будете добавлены в список участников события\n\n"
+
+    message += f"🗓 <b>Дата и время:</b> {convert_date(event.date)}, {convert_time(event.date)}\n"
     message += f"📅 <b>Событие:</b> {event.type}\n"
     message += f"💰 <b>Стоимость участия:</b> {event.price} руб.\n\n"
     message += f"Для записи на событие необходимо перевести {event.price} руб. на указанный номер телефона: <b>{settings.admin_phone} (Т-Банк)</b>\n\n"

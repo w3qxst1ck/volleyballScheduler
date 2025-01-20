@@ -122,13 +122,23 @@ def my_event_card_keyboard(payment: Payment) -> InlineKeyboardBuilder:
     return keyboard
 
 
-def event_card_keyboard(event_id: int, user_id: int, payment: Payment | None, back_to: str) -> InlineKeyboardBuilder:
+def event_card_keyboard(event_id: int,
+                        user_id: int,
+                        payment: Payment | None,
+                        back_to: str,
+                        full_event: bool) -> InlineKeyboardBuilder:
     """Зарегистрироваться и отменить регистрацию"""
     keyboard = InlineKeyboardBuilder()
 
     # пользователь еще не регистрировался
     if not payment:
-        keyboard.row(InlineKeyboardButton(text=f"✅ Записаться", callback_data=f"reg-user_{event_id}_{user_id}"))
+        # если все места заняты, предлагаем в резерв
+        if full_event:
+            keyboard.row(InlineKeyboardButton(text=f"📝 Записаться в резерв", callback_data=f"reg-user-reserve_{event_id}_{user_id}"))
+        # свободные места есть
+        else:
+            keyboard.row(InlineKeyboardButton(text=f"✅ Записаться", callback_data=f"reg-user_{event_id}_{user_id}"))
+
 
     keyboard.row(InlineKeyboardButton(text=f"🔙 назад", callback_data=f"{back_to}"))
 
