@@ -51,5 +51,20 @@ class PaymentsEventsUsers(Payment):
     user: User
 
 
+class Reserved(BaseModel):
+    id: int
+    date: datetime.datetime
+
+
+class EventsReservedForUser(Reserved):
+    # user: User
+    event: Event
+
+
+class UsersReservedForEvent(Reserved):
+    user: User
+    # event: Event
+
+
 
 

@@ -165,7 +165,7 @@ async def user_event_handler(callback: types.CallbackQuery) -> None:
 
 @router.callback_query(lambda callback: callback.data.split("_")[0] == "reg-user-reserve")
 async def register_user_to_reserve(callback: types.CallbackQuery) -> None:
-    """Запись пользователя в резерв"""
+    """Регистрация пользователя в резерв"""
     event_id = int(callback.data.split("_")[1])
     user_id = int(callback.data.split("_")[2])
 
@@ -180,7 +180,8 @@ async def register_user_to_reserve(callback: types.CallbackQuery) -> None:
                                          disable_web_page_preview=True,
                                          reply_markup=kb.payment_confirm_keyboard(
                                              user,
-                                             event_with_users
+                                             event_with_users,
+                                             to_reserve=True
                                          ).as_markup())
 
     # если уровень ниже
@@ -204,7 +205,7 @@ async def register_user_to_reserve(callback: types.CallbackQuery) -> None:
 
 @router.callback_query(lambda callback: callback.data.split("_")[0] == "reg-user")
 async def register_user_on_event(callback: types.CallbackQuery) -> None:
-    """Регистрация пользователя на мероприятие"""
+    """Регистрация пользователя на событие"""
     event_id = int(callback.data.split("_")[1])
     user_id = int(callback.data.split("_")[2])
 
@@ -239,9 +240,12 @@ async def register_user_on_event(callback: types.CallbackQuery) -> None:
         )
 
 
-@router.callback_query(lambda callback: callback.data.split("_")[0] == "paid")
+@router.callback_query(lambda callback: callback.data.split("_")[0] == "paid"
+                       or callback.data.split("_")[0] == "paid-reserve")
 async def register_paid_event(callback: types.CallbackQuery, bot: Bot) -> None:
-    """Подтверждение оплаты от пользователя"""
+    """Подтверждение оплаты от пользователя в основной состав события или резерв"""
+    # определение запись в резерв или основу
+    to_reserve = callback.data.split("_")[0] == "paid-reserve"
     user_id = int(callback.data.split("_")[1])
     event_id = int(callback.data.split("_")[2])
 
@@ -263,19 +267,38 @@ async def register_paid_event(callback: types.CallbackQuery, bot: Bot) -> None:
     event_date = utils.convert_date(event.date)
     event_time = utils.convert_time(event.date)
 
-    msg_to_admin = f"Пользователь <a href='tg://user?id={user.tg_id}'>{user.firstname} {user.lastname}</a> " \
-                   f"оплатил <b>{event.type}</b> \"{event.title}\" <b>{event_date} {event_time}</b> " \
-                   f"на сумму <b>{event.price} руб.</b> \n\nПодтвердите или отклоните оплату"
+    if to_reserve:
+        msg_to_admin = f"Пользователь <a href='tg://user?id={user.tg_id}'>{user.firstname} {user.lastname}</a> " \
+                       f"оплатил <b>запись в резерв</b> события <b>{event.type}</b> \"{event.title}\" <b>{event_date} {event_time}</b> " \
+                       f"на сумму <b>{event.price} руб.</b> \n\nПодтвердите или отклоните оплату"
+    else:
+        msg_to_admin = f"Пользователь <a href='tg://user?id={user.tg_id}'>{user.firstname} {user.lastname}</a> " \
+                       f"оплатил <b>{event.type}</b> \"{event.title}\" <b>{event_date} {event_time}</b> " \
+                       f"на сумму <b>{event.price} руб.</b> \n\nПодтвердите или отклоните оплату"
+
+    # формирование клавиатуры для подтверждения оплаты в резерв или основу
+    if to_reserve:
+        reply_markup = kb.confirm_decline_keyboard(event_id, user_id, to_reserve=True)
+    else:
+        reply_markup = kb.confirm_decline_keyboard(event_id, user_id).as_markup()
 
     await bot.send_message(
         settings.settings.main_admin_tg_id,
         msg_to_admin,
-        reply_markup=kb.confirm_decline_keyboard(event_id, user_id).as_markup()
+        reply_markup=reply_markup.as_markup()
     )
 
-    await callback.message.edit_text(f"🔔 <b>Автоматическое уведомление</b>\n\n"
-                                     f"Ваш платеж на сумму {event.price} руб. ожидает подтверждение администратором. "
-                                     f"После подтверждения вам будет отправлено уведомление о записи на событие.")
+    # формирование текста ответу пользователю об ожидании подтверждения оплаты
+    if to_reserve:
+        answer_text = f"🔔 <b>Автоматическое уведомление</b>\n\n"\
+                      f"Ваш платеж на сумму {event.price} руб. ожидает подтверждение администратором. "\
+                      f"После подтверждения вам будет отправлено уведомление о записи <b>в резерв события</b>."
+    else:
+        answer_text = f"🔔 <b>Автоматическое уведомление</b>\n\n"\
+                      f"Ваш платеж на сумму {event.price} руб. ожидает подтверждение администратором. "\
+                      f"После подтверждения вам будет отправлено уведомление о записи на событие."
+
+    await callback.message.edit_text(answer_text)
 
     msg = "⏳ <b>Дождитесь подтверждения оплаты от администратора</b>\n\n" \
           "Вы можете отслеживать статус оплаты во вкладке \"👨🏻‍💻 Главное меню\" в разделе \"🏐 Мои события\""
@@ -430,6 +453,22 @@ async def update_user_handler(message: types.Message, state: FSMContext) -> None
             pass
 
         await state.update_data(prev_mess=msg)
+
+
+@router.message(Command("test"))
+async def help_handler(message: types.Message) -> None:
+    """test message"""
+    # user = await AsyncOrm.get_user_by_tg_id(str(message.from_user.id))
+    # reserved_events = await AsyncOrm.get_reserved_events_by_user_id(user.id)
+    # print(reserved_events)
+    # for event in reserved_events:
+    #     # await message.answer(f"{event.id} | {event.date} | {event.event.id} | {event.user.id}")
+    #     await message.answer(f"{event.id} | {event.date} | {event.event.id}")
+
+    reserved_users = await AsyncOrm.get_reserved_users_by_event_id(2)
+    print(reserved_users)
+    for reserve in reserved_users:
+        await message.answer(f"{reserve.id} | {reserve.date} | {reserve.user.id}")
 
 
 # HELP

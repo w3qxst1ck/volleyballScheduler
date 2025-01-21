@@ -244,7 +244,6 @@ class AsyncOrm:
             await session.flush()
             await session.commit()
 
-
     # EVENTS_USERS
     @staticmethod
     async def add_user_to_event(event_id: int, user_id: int):
@@ -295,6 +294,46 @@ class AsyncOrm:
             await session.execute(query)
             await session.flush()
             await session.commit()
+
+    # RESERVE
+    @staticmethod
+    async def add_user_to_reserve(event_id: int, user_id: int):
+        """Добавление tables.User в tables.Event.reserved"""
+        async with async_session_factory() as session:
+            reserve = tables.Reserved(event_id=event_id, user_id=user_id)
+            session.add(reserve)
+            await session.flush()
+            await session.commit()
+
+    @staticmethod
+    async def get_reserved_events_by_user_id(user_id: int) -> List[schemas.EventsReservedForUser]:
+        """Получение зарезервированных пользователем событий"""
+        async with async_session_factory() as session:
+            query = select(tables.Reserved) \
+                .where(tables.Reserved.user_id == user_id)\
+                .options(selectinload(tables.Reserved.event))
+                # .options(selectinload(tables.Reserved.user))\
+
+            result = await session.execute(query)
+            rows = result.unique().scalars().all()
+
+            user_events_reserved = [schemas.EventsReservedForUser.model_validate(row, from_attributes=True) for row in rows]
+            return user_events_reserved
+
+    @staticmethod
+    async def get_reserved_users_by_event_id(event_id: int) -> List[schemas.UsersReservedForEvent]:
+        """Получение зарезервированных пользователей на событие"""
+        async with async_session_factory() as session:
+            query = select(tables.Reserved) \
+                .where(tables.Reserved.event_id == event_id) \
+                .options(selectinload(tables.Reserved.user))
+                # .options(selectinload(tables.Reserved.event))
+
+            result = await session.execute(query)
+            rows = result.unique().scalars().all()
+
+            user_events_reserved = [schemas.UsersReservedForEvent.model_validate(row, from_attributes=True) for row in rows]
+            return user_events_reserved
 
     # PAYMENTS
     @staticmethod

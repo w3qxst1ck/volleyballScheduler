@@ -436,9 +436,13 @@ async def event_level_choose_handler(callback: types.CallbackQuery, bot: Bot) ->
 
 
 # PAYMENTS
-@router.callback_query(lambda callback: callback.data.split("_")[0] == "admin-payment")
+@router.callback_query(lambda callback: callback.data.split("_")[0] == "admin-payment"
+                       or callback.data.split("_")[0] == "admin-payment-reserve")
 async def confirm_payment(callback: types.CallbackQuery, bot: Bot) -> None:
-    """Подтверждение оплаты от админа"""
+    """Подтверждение оплаты от админа в резерв и основу"""
+    # определение в резерв или основу идет запись
+    to_reserve = callback.data.split("_")[0] == "admin-payment-reserve"
+
     confirm = callback.data.split("_")[1]
 
     event_id = int(callback.data.split("_")[2])
@@ -450,25 +454,40 @@ async def confirm_payment(callback: types.CallbackQuery, bot: Bot) -> None:
     event_date = utils.convert_date(event.date)
     event_time = utils.convert_time(event.date)
 
-    answer_text = f"Пользователь <a href='tg://user?id={user.tg_id}'>{user.firstname} {user.lastname}</a> " \
-                  f"оплатил <b>{event.type}</b> \"{event.title}\" <b>{event_date} {event_time}</b> " \
-                  f"на сумму <b>{event.price} руб.</b>\n\n"
+    if to_reserve:
+        answer_text = f"Пользователь <a href='tg://user?id={user.tg_id}'>{user.firstname} {user.lastname}</a> " \
+                      f"оплатил <b>запись в резерв</b> на событие <b>{event.type}</b> \"{event.title}\" <b>{event_date} {event_time}</b> " \
+                      f"на сумму <b>{event.price} руб.</b>\n\n"
+    else:
+        answer_text = f"Пользователь <a href='tg://user?id={user.tg_id}'>{user.firstname} {user.lastname}</a> " \
+                      f"оплатил <b>{event.type}</b> \"{event.title}\" <b>{event_date} {event_time}</b> " \
+                      f"на сумму <b>{event.price} руб.</b>\n\n"
 
     # подтверждение оплаты
     if confirm == "ok":
         # подтверждение оплаты
         await AsyncOrm.update_payment_status(event_id, user_id)
         # создание записи в таблице event_users
-        await AsyncOrm.add_user_to_event(event_id, user_id)
+        if to_reserve:
+            await AsyncOrm.add_user_to_reserve(event_id, user_id)
+        else:
+            await AsyncOrm.add_user_to_event(event_id, user_id)
 
         # сообщение админу
-        answer_ok = answer_text + "Оплата подтверждена ✅\nПользователь записан на событие"
+        if to_reserve:
+            answer_ok = answer_text + "Оплата подтверждена ✅\nПользователь записан в резерв"
+        else:
+            answer_ok = answer_text + "Оплата подтверждена ✅\nПользователь записан на событие"
         await callback.message.edit_text(answer_ok)
 
         # сообщение пользователю
         date = utils.convert_date(event.date)
         time = utils.convert_time(event.date)
-        msg = f"🔔 <b>Автоматическое уведомление</b>\n\nОплата прошла успешно ✅\nВы записаны на {event.type} \"{event.title}\" {date} в {time}"
+
+        if to_reserve:
+            msg = f"🔔 <b>Автоматическое уведомление</b>\n\nОплата прошла успешно ✅\nВы <b>записаны в резерв</b> на событие {event.type} \"{event.title}\" {date} в {time}"
+        else:
+            msg = f"🔔 <b>Автоматическое уведомление</b>\n\nОплата прошла успешно ✅\nВы записаны на {event.type} \"{event.title}\" {date} в {time}"
         await bot.send_message(user.tg_id, msg)
 
     # отклонение оплаты

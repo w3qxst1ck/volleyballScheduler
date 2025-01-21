@@ -157,13 +157,18 @@ def yes_no_keyboard_for_unreg_from_event(event_id: int, user_id: int, payment_id
 
 
 # PAYMENTS
-def payment_confirm_keyboard(user: User, event: Event) -> InlineKeyboardBuilder:
+def payment_confirm_keyboard(user: User, event: Event, to_reserve: bool = False) -> InlineKeyboardBuilder:
     """Клавиатура с кнопкой подтверждения оплаты"""
     keyboard = InlineKeyboardBuilder()
-    keyboard.row(
-        InlineKeyboardButton(
-            text="Оплатил(а)", callback_data=f"paid_{user.id}_{event.id}"),
-    )
+    if to_reserve:
+        keyboard.row(InlineKeyboardButton(
+            text="Оплатил(а)", callback_data=f"paid-reserve_{user.id}_{event.id}"
+        ))
+    else:
+        keyboard.row(
+            InlineKeyboardButton(
+                text="Оплатил(а)", callback_data=f"paid_{user.id}_{event.id}")
+        )
 
     keyboard.row(InlineKeyboardButton(text="🔙 назад", callback_data=f"user-event_{event.id}"))
 
@@ -185,16 +190,18 @@ def main_keyboard_or_my_events() -> InlineKeyboardBuilder:
     return keyboard
 
 
-def confirm_decline_keyboard(event_id: int, user_id: int) -> InlineKeyboardBuilder:
+def confirm_decline_keyboard(event_id: int, user_id: int, to_reserve: bool = False) -> InlineKeyboardBuilder:
     """Клавиатура для подтверждения или отклонения платежа админом"""
-    """Клавиатура с кнопкой подтверждения оплаты для админа"""
     keyboard = InlineKeyboardBuilder()
-    keyboard.row(
-        InlineKeyboardButton(
-            text="Подтвердить ✅", callback_data=f"admin-payment_ok_{event_id}_{user_id}"),
-        InlineKeyboardButton(
-            text="Отклонить ❌", callback_data=f"admin-payment_cancel_{event_id}_{user_id}"),
-    )
+    if to_reserve:
+        keyboard.row(
+            InlineKeyboardButton(text="Подтвердить ✅", callback_data=f"admin-payment-reserve_ok_{event_id}_{user_id}"),
+            InlineKeyboardButton(text="Отклонить ❌", callback_data=f"admin-payment-reserve_cancel_{event_id}_{user_id}"),
+        )
+    else:
+        keyboard.row(
+            InlineKeyboardButton(text="Подтвердить ✅", callback_data=f"admin-payment_ok_{event_id}_{user_id}"),
+            InlineKeyboardButton(text="Отклонить ❌", callback_data=f"admin-payment_cancel_{event_id}_{user_id}"), )
     return keyboard
 
 
