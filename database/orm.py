@@ -306,7 +306,7 @@ class AsyncOrm:
             await session.commit()
 
     @staticmethod
-    async def get_reserved_events_by_user_id(user_id: int) -> List[schemas.EventsReservedForUser]:
+    async def get_reserved_events_by_user_id(user_id: int) -> List[schemas.ReservedEvent]:
         """Получение зарезервированных пользователем событий"""
         async with async_session_factory() as session:
             query = select(tables.Reserved) \
@@ -317,11 +317,13 @@ class AsyncOrm:
             result = await session.execute(query)
             rows = result.unique().scalars().all()
 
-            user_events_reserved = [schemas.EventsReservedForUser.model_validate(row, from_attributes=True) for row in rows]
-            return user_events_reserved
+            users_reserved = [schemas.ReservedEvent.model_validate(row, from_attributes=True) for row in rows]
+
+            users_reserved_sorted_by_date = sorted(users_reserved, key=lambda reserve: reserve.date)
+            return users_reserved_sorted_by_date
 
     @staticmethod
-    async def get_reserved_users_by_event_id(event_id: int) -> List[schemas.UsersReservedForEvent]:
+    async def get_reserved_users_by_event_id(event_id: int) -> List[schemas.ReservedUser]:
         """Получение зарезервированных пользователей на событие"""
         async with async_session_factory() as session:
             query = select(tables.Reserved) \
@@ -332,8 +334,11 @@ class AsyncOrm:
             result = await session.execute(query)
             rows = result.unique().scalars().all()
 
-            user_events_reserved = [schemas.UsersReservedForEvent.model_validate(row, from_attributes=True) for row in rows]
-            return user_events_reserved
+            events_reserved = [schemas.ReservedUser.model_validate(row, from_attributes=True) for row in rows]
+
+            events_reserved_sorted_by_date = sorted(events_reserved, key=lambda reserve: reserve.date)
+
+            return events_reserved_sorted_by_date
 
     # PAYMENTS
     @staticmethod

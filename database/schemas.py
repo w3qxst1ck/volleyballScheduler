@@ -56,12 +56,12 @@ class Reserved(BaseModel):
     date: datetime.datetime
 
 
-class EventsReservedForUser(Reserved):
+class ReservedEvent(Reserved):
     # user: User
     event: Event
 
 
-class UsersReservedForEvent(Reserved):
+class ReservedUser(Reserved):
     user: User
     # event: Event
 

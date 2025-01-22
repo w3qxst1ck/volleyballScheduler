@@ -3,9 +3,9 @@ import datetime
 from aiogram.types import InlineKeyboardButton
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from functools import wraps
-from typing import Callable
+from typing import Callable, List
 
-from database.schemas import Event, User, EventRel, PaymentsEventsUsers, Payment
+from database.schemas import Event, User, EventRel, PaymentsEventsUsers, Payment, ReservedEvent
 from routers.utils import convert_date, convert_time, get_weekday_from_date
 from settings import settings
 
@@ -35,7 +35,7 @@ def menu_users_keyboard() -> InlineKeyboardBuilder:
 
 
 @back_button("all-events")
-def events_keyboard(events: list[EventRel], user: User) -> InlineKeyboardBuilder:
+def events_keyboard(events: list[EventRel], user: User, reserved_events: List[ReservedEvent]) -> InlineKeyboardBuilder:
     """Клавиатура с мероприятиями для вывода пользователю"""
     keyboard = InlineKeyboardBuilder()
 
@@ -46,7 +46,11 @@ def events_keyboard(events: list[EventRel], user: User) -> InlineKeyboardBuilder
         if user in event.users_registered:
             registered = "✅️" + " "
 
-        keyboard.row(InlineKeyboardButton(text=f"{registered}{time} {event.type}", callback_data=f"user-event_{event.id}"))
+        reserved = ""
+        if event.id in [reserve.event.id for reserve in reserved_events]:
+            reserved = "📝" + " "
+
+        keyboard.row(InlineKeyboardButton(text=f"{registered}{reserved}{time} {event.type}", callback_data=f"user-event_{event.id}"))
 
     keyboard.adjust(1)
     return keyboard
@@ -86,14 +90,21 @@ def user_profile_keyboard() -> InlineKeyboardBuilder:
 
 
 @back_button("user-menu")
-def user_events(payments: list[PaymentsEventsUsers]) -> InlineKeyboardBuilder:
+def user_events(payments: list[PaymentsEventsUsers], reserved_events: list[ReservedEvent]) -> InlineKeyboardBuilder:
     """Мероприятия куда пользователь зарегистрирован"""
     keyboard = InlineKeyboardBuilder()
+    reserved_events_ids = [reserve.event.id for reserve in reserved_events]
 
     for payment in payments:
         date = convert_date(payment.event.date)
         weekday = settings.weekdays[datetime.datetime.weekday(payment.event.date)]
-        status = "✅️" if payment.paid_confirm else "⏳"
+
+        if payment.event.id in reserved_events_ids:
+            status = "📝"
+        elif payment.paid_confirm:
+            status = "✅️"
+        else:
+            status = "⏳"
 
         keyboard.row(InlineKeyboardButton(
             text=f"{status} {date} ({weekday}) {payment.event.type}",
@@ -104,12 +115,12 @@ def user_events(payments: list[PaymentsEventsUsers]) -> InlineKeyboardBuilder:
     return keyboard
 
 
-def my_event_card_keyboard(payment: Payment) -> InlineKeyboardBuilder:
+def my_event_card_keyboard(payment: Payment, reserved_event: bool = False) -> InlineKeyboardBuilder:
     """Клавиатура в моем мероприятии"""
     keyboard = InlineKeyboardBuilder()
 
     # если оплата подтверждена
-    if payment.paid_confirm:
+    if payment.paid_confirm and not reserved_event:
         keyboard.row(
             InlineKeyboardButton(
                 text=f"❌ Отменить запись",

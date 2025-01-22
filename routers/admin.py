@@ -43,7 +43,11 @@ async def event_info_handler(callback: types.CallbackQuery) -> None:
     """Карточка события для админа"""
     event_id = int(callback.data.split("_")[1])
     event = await AsyncOrm.get_event_with_users(event_id)
-    msg = ms.event_card_for_user_message(event, payment=None)
+
+    # получаем пользователь в резерве события
+    reserved_users = await AsyncOrm.get_reserved_users_by_event_id(event_id)
+
+    msg = ms.event_card_for_user_message(event, payment=None, reserved_users=reserved_users)
     msg += "\nЧтобы удалить участника с события, нажмите кнопку с соответствующим номером участника"
 
     await callback.message.edit_text(
@@ -81,7 +85,9 @@ async def event_delete_user_handler(callback: types.CallbackQuery, bot: Bot) -> 
     await callback.message.edit_text("Пользователь удален с события ✅")
 
     # возврат к карточке мероприятия
-    msg_for_admin = ms.event_card_for_user_message(event, payment=None)
+    # получаем пользователь в резерве события
+    reserved_users = await AsyncOrm.get_reserved_users_by_event_id(event_id)
+    msg_for_admin = ms.event_card_for_user_message(event, payment=None, reserved_users=reserved_users)
     msg_for_admin += "\nЧтобы удалить участника с события, нажмите кнопку с соответствующим номером участника"
     await callback.message.answer(msg_for_admin, disable_web_page_preview=True, reply_markup=kb.event_card_keyboard_admin(event).as_markup())
 
@@ -309,7 +315,7 @@ async def add_min_count_users_handler(message: types.Message, state: FSMContext)
 
     await state.set_state(AddEventFSM.level)
     msg = await message.answer("Выберите минимальный уровень участников события",
-                         reply_markup=kb.levels_keyboards().as_markup())
+                               reply_markup=kb.levels_keyboards().as_markup())
     await state.update_data(prev_mess=msg)
 
 

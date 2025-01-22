@@ -1,4 +1,6 @@
-from database.schemas import User, EventRel, Event, PaymentsEventsUsers, Payment
+from typing import List
+
+from database.schemas import User, EventRel, Event, PaymentsEventsUsers, Payment, ReservedUser
 from routers.utils import convert_date, convert_time, convert_date_named_month
 from settings import settings
 import datetime
@@ -22,7 +24,8 @@ def user_profile_message(user: User) -> str:
 
 
 # актуальная карточка
-def event_card_for_user_message(event: EventRel, payment: Payment | None) -> str:
+def event_card_for_user_message(event: EventRel, payment: Payment | None,
+                                reserved_users: List[ReservedUser]) -> str:
     """Информация о событии с его пользователями"""
     date = convert_date_named_month(event.date)
     time = convert_time(event.date)
@@ -40,9 +43,14 @@ def event_card_for_user_message(event: EventRel, payment: Payment | None) -> str
     elif not payment.paid_confirm:
         message += "⏳ Ожидается подтверждение платежа от администратора\n\n"
 
-    # пользователь зарегистрирован на мероприятие
+    # проверка статуса регистрации на событие
     else:
-        message += f"✅ <b>Вы записаны на событие \"{event.type}\"</b>\n\n"
+        # пользователь зарегистрирован на событие
+        if payment.user_id in [user.id for user in event.users_registered]:
+            message += f"✅ <b>Вы записаны на событие \"{event.type}\"</b>\n\n"
+        # пользователь зарегистрирован в резерв
+        elif payment.user_id in [user.user.id for user in reserved_users]:
+            message += f"📝 <b>Вы записаны в резерв на событие \"{event.type}\"</b>\n\n"
 
     message += f"🏐 <b>\"{event.type}\"</b>\n" \
                f"  • {event.title}\n" \
@@ -62,7 +70,13 @@ def event_card_for_user_message(event: EventRel, payment: Payment | None) -> str
             message += f"<b>{idx}.</b> <a href='tg://user?id={user.tg_id}'>{user.firstname} {user.lastname}</a> " \
                        f"{f'({settings.levels[user.level]})' if user.level else ''}\n"
 
-        # message += "\nДля перехода в диалог с участником нажмите на его имя"
+    # если есть резерв
+    if reserved_users:
+        message += "\n<b>Резерв:</b>\n"
+
+        for idx, reserve in enumerate(reserved_users, 1):
+            message += f"<b>{idx}.</b> <a href='tg://user?id={reserve.user.tg_id}'>{reserve.user.firstname} {reserve.user.lastname}</a> " \
+                       f"{f'({settings.levels[reserve.user.level]})' if reserve.user.level else ''}\n"
 
     return message
 

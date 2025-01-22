@@ -126,10 +126,15 @@ async def user_events_dates_handler(callback: types.CallbackQuery) -> None:
 
     user = await AsyncOrm.get_user_by_tg_id(str(callback.from_user.id))
     events = await AsyncOrm.get_events_for_date(date)
+    reserved_events = await AsyncOrm.get_reserved_events_by_user_id(user.id)
+
+    msg = f"События на <b>{converted_date} ({weekday})</b>:\n\n" \
+          f"События, на которые вы уже записаны, помечены '✅️'\n" \
+          f"События, на которые вы записаны в резерв, помечены '📝'"
 
     await callback.message.edit_text(
-        f"События на <b>{converted_date} ({weekday})</b>:\n\nСобытия, на которые вы уже записаны, помечены '✅️'",
-        reply_markup=kb.events_keyboard(events, user).as_markup()
+        msg,
+        reply_markup=kb.events_keyboard(events, user, reserved_events).as_markup()
     )
 
 
@@ -148,7 +153,10 @@ async def user_event_handler(callback: types.CallbackQuery) -> None:
     # check full Event or not
     full_event: bool = len(event_with_users.users_registered) == event_with_users.places
 
-    msg = ms.event_card_for_user_message(event_with_users, payment)
+    # получаем пользователь в резерве события
+    reserved_users = await AsyncOrm.get_reserved_users_by_event_id(event_id)
+
+    msg = ms.event_card_for_user_message(event_with_users, payment, reserved_users)
 
     await callback.message.edit_text(
         msg,
@@ -187,7 +195,11 @@ async def register_user_to_reserve(callback: types.CallbackQuery) -> None:
     # если уровень ниже
     else:
         payment = await AsyncOrm.get_payment_by_event_and_user(event_id, user.id)
-        msg = ms.event_card_for_user_message(event_with_users, payment)
+
+        # получаем пользователь в резерве события
+        reserved_users = await AsyncOrm.get_reserved_users_by_event_id(event_id)
+
+        msg = ms.event_card_for_user_message(event_with_users, payment, reserved_users)
         await callback.message.edit_text("❗Вы не можете записаться на данное событие, "
                                          "так как ваш уровень ниже необходимого")
         await callback.message.answer(
@@ -224,7 +236,11 @@ async def register_user_on_event(callback: types.CallbackQuery) -> None:
     # если уровень ниже
     else:
         payment = await AsyncOrm.get_payment_by_event_and_user(event_id, user.id)
-        msg = ms.event_card_for_user_message(event_with_users, payment)
+
+        # получаем пользователь в резерве события
+        reserved_users = await AsyncOrm.get_reserved_users_by_event_id(event_id)
+
+        msg = ms.event_card_for_user_message(event_with_users, payment, reserved_users)
         await callback.message.edit_text("❗Вы не можете записаться на данное событие, "
                                          "так как ваш уровень ниже необходимого")
         await callback.message.answer(
@@ -280,7 +296,7 @@ async def register_paid_event(callback: types.CallbackQuery, bot: Bot) -> None:
     if to_reserve:
         reply_markup = kb.confirm_decline_keyboard(event_id, user_id, to_reserve=True)
     else:
-        reply_markup = kb.confirm_decline_keyboard(event_id, user_id).as_markup()
+        reply_markup = kb.confirm_decline_keyboard(event_id, user_id)
 
     await bot.send_message(
         settings.settings.main_admin_tg_id,
@@ -314,12 +330,22 @@ async def user_event_registered_handler(callback: types.CallbackQuery) -> None:
     payments = await AsyncOrm.get_user_payments_with_events_and_users(str(callback.from_user.id))
     active_events = list(filter(lambda payment: payment.event.active == True, payments))
 
+    # получение зарезервированных мероприятий
+    if payments:
+        user_id = payments[0].user_id
+        reserved_events = await AsyncOrm.get_reserved_events_by_user_id(user_id)
+    else:
+        reserved_events = []
+
     if not active_events:
         msg = "Вы пока никуда не записаны\n\nВы можете это сделать во вкладке \n\"🗓️ Все события\""
     else:
-        msg = "<b>События куда вы записались:</b>\n\n✅ - оплаченные события\n⏳ - ожидается подтверждение оплаты от администратора"
+        msg = "<b>События куда вы записались:</b>\n\n" \
+              "✅ - оплаченные события\n" \
+              "📝 - резерв на событие\n" \
+              "⏳ - ожидается подтверждение оплаты от администратора"
 
-    await callback.message.edit_text(msg, reply_markup=kb.user_events(active_events).as_markup())
+    await callback.message.edit_text(msg, reply_markup=kb.user_events(active_events, reserved_events).as_markup())
 
 
 @router.callback_query(lambda callback: callback.data.split("_")[0] == "my-events")
@@ -329,10 +355,18 @@ async def my_event_info_handler(callback: types.CallbackQuery) -> None:
 
     payment = await AsyncOrm.get_payment_by_id(payment_id)
     event = await AsyncOrm.get_event_with_users(payment.event_id)
+    reserved_users = await AsyncOrm.get_reserved_users_by_event_id(event.id)
 
-    msg = ms.event_card_for_user_message(event, payment)
+    msg = ms.event_card_for_user_message(event, payment, reserved_users)
 
-    await callback.message.edit_text(msg, disable_web_page_preview=True, reply_markup=kb.my_event_card_keyboard(payment).as_markup())
+    # для кнопки отмены
+    reserved_event = len(reserved_users) > 0
+
+    await callback.message.edit_text(
+        msg,
+        disable_web_page_preview=True,
+        reply_markup=kb.my_event_card_keyboard(payment, reserved_event).as_markup()
+    )
 
 
 @router.callback_query(lambda callback: callback.data.split("_")[0] == "unreg-user")
@@ -368,12 +402,22 @@ async def unregister_form_my_event_handler(callback: types.CallbackQuery, bot: B
     events = await AsyncOrm.get_user_payments_with_events_and_users(str(callback.from_user.id))
     active_events = list(filter(lambda payment: payment.event.active == True, events))
 
+    # получение зарезервированных мероприятий
+    if events:
+        user_id = events[0].user_id
+        reserved_events = await AsyncOrm.get_reserved_events_by_user_id(user_id)
+    else:
+        reserved_events = []
+
     if not active_events:
         msg = "Вы пока никуда не записаны\n\nВы можете это сделать во вкладке \n\"🗓️ Все события\""
     else:
-        msg = "События куда вы записались:\n\n✅ - оплаченные события\n⏳ - ожидается подтверждение оплаты от администратора"
+        msg = "<b>События куда вы записались:</b>\n\n" \
+              "✅ - оплаченные события\n" \
+              "📝 - резерв на событие\n" \
+              "⏳ - ожидается подтверждение оплаты от администратора"
 
-    await callback.message.answer(msg, reply_markup=kb.user_events(active_events).as_markup())
+    await callback.message.answer(msg, reply_markup=kb.user_events(active_events, reserved_events).as_markup())
 
     # оповещение админа
     user = await AsyncOrm.get_user_by_id(user_id)
