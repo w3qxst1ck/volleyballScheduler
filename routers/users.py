@@ -171,55 +171,14 @@ async def user_event_handler(callback: types.CallbackQuery) -> None:
     )
 
 
-@router.callback_query(lambda callback: callback.data.split("_")[0] == "reg-user-reserve")
-async def register_user_to_reserve(callback: types.CallbackQuery) -> None:
-    """Регистрация пользователя в резерв"""
+@router.callback_query(lambda callback: callback.data.split("_")[0] == "reg-user"
+                       or callback.data.split("_")[0] == "reg-user-reserve")
+async def register_user_on_event_or_reserve(callback: types.CallbackQuery) -> None:
+    """Регистрация пользователя на событие или в резерв"""
     event_id = int(callback.data.split("_")[1])
     user_id = int(callback.data.split("_")[2])
-
-    event_with_users = await AsyncOrm.get_event_with_users(event_id)
-    user = await AsyncOrm.get_user_by_id(user_id)
-
-    # если уровень соответствует
-    if not user.level or user.level >= event_with_users.level:
-        msg = ms.invoice_message_for_user(event_with_users, to_reserve=True)
-
-        await callback.message.edit_text(msg,
-                                         disable_web_page_preview=True,
-                                         reply_markup=kb.payment_confirm_keyboard(
-                                             user,
-                                             event_with_users,
-                                             to_reserve=True
-                                         ).as_markup())
-
-    # если уровень ниже
-    else:
-        payment = await AsyncOrm.get_payment_by_event_and_user(event_id, user.id)
-
-        # получаем пользователь в резерве события
-        reserved_users = await AsyncOrm.get_reserved_users_by_event_id(event_id)
-
-        msg = ms.event_card_for_user_message(event_with_users, payment, reserved_users)
-        await callback.message.edit_text("❗Вы не можете записаться на данное событие, "
-                                         "так как ваш уровень ниже необходимого")
-        await callback.message.answer(
-            msg,
-            disable_web_page_preview=True,
-            reply_markup=kb.event_card_keyboard(
-                event_id,
-                user.id,
-                payment,
-                f"events-date_{utils.convert_date(event_with_users.date)}",
-                full_event=True
-            ).as_markup()
-        )
-
-
-@router.callback_query(lambda callback: callback.data.split("_")[0] == "reg-user")
-async def register_user_on_event(callback: types.CallbackQuery) -> None:
-    """Регистрация пользователя на событие"""
-    event_id = int(callback.data.split("_")[1])
-    user_id = int(callback.data.split("_")[2])
+    # определение запись в основу или резерв
+    to_reserve = callback.data.split("_")[0] == "reg-user-reserve"
 
     event_with_users = await AsyncOrm.get_event_with_users(event_id)
     user = await AsyncOrm.get_user_by_id(user_id)
@@ -227,17 +186,18 @@ async def register_user_on_event(callback: types.CallbackQuery) -> None:
     # если уровень соответствует
     if not user.level or user.level >= event_with_users.level:
 
-        msg = ms.invoice_message_for_user(event_with_users)
+        msg = ms.invoice_message_for_user(event_with_users, to_reserve=to_reserve)
         await callback.message.edit_text(
             msg,
             disable_web_page_preview=True,
-            reply_markup=kb.payment_confirm_keyboard(user, event_with_users).as_markup())
+            reply_markup=kb.payment_confirm_keyboard(user, event_with_users, to_reserve=to_reserve).as_markup()
+        )
 
     # если уровень ниже
     else:
         payment = await AsyncOrm.get_payment_by_event_and_user(event_id, user.id)
 
-        # получаем пользователь в резерве события
+        # получаем пользователей в резерве события
         reserved_users = await AsyncOrm.get_reserved_users_by_event_id(event_id)
 
         msg = ms.event_card_for_user_message(event_with_users, payment, reserved_users)
@@ -251,7 +211,7 @@ async def register_user_on_event(callback: types.CallbackQuery) -> None:
                 user.id,
                 payment,
                 f"events-date_{utils.convert_date(event_with_users.date)}",
-                full_event=False
+                full_event=to_reserve
             ).as_markup()
         )
 
