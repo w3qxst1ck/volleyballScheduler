@@ -8,6 +8,12 @@ import routers.messages as ms
 from settings import settings
 
 
+async def run_every_day(bot: aiogram.Bot):
+    """Запуск ежедневной проверки"""
+    await notify_users_about_events(bot)
+    await delete_old_events()
+
+
 async def run_every_hour(bot: aiogram.Bot) -> None:
     """Выполняется каждый час"""
     await update_events()
@@ -38,12 +44,6 @@ async def check_min_users_count(bot: aiogram.Bot):
                     await bot.send_message(user.tg_id, msg)
 
 
-async def run_every_day(bot: aiogram.Bot):
-    """Запуск ежедневной проверки"""
-    await notify_users_about_events(bot)
-    await delete_old_events()
-
-
 async def update_events():
     """Изменение статуса прошедших событий"""
     events = await AsyncOrm.get_events()
@@ -53,6 +53,19 @@ async def update_events():
         if datetime.datetime.now(tz=pytz.timezone("Europe/Moscow")) - datetime.timedelta(hours=1) > \
                 event.date.astimezone(tz=pytz.timezone("Europe/Moscow")) - datetime.timedelta(hours=3):
             await AsyncOrm.update_event_status_to_false(event.id)
+
+
+async def check_need_reserve():
+    """Проверка нужно ли брать людей из резерва"""
+    active_events_with_users = await AsyncOrm.get_events_with_users(only_active=True)
+
+    for event in active_events_with_users:
+        users_reserved = await AsyncOrm.get_reserved_users_by_event_id(event.id)
+        event_is_not_full = event.places > len(event.users_registered)
+        event_has_reserve = len(users_reserved) > 0
+
+        if event_is_not_full and event_has_reserve:
+            await AsyncOrm.transfer_from_reserve_to_event()
 
 
 async def notify_users_about_events(bot: aiogram.Bot):

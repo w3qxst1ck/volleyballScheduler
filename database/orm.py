@@ -340,6 +340,26 @@ class AsyncOrm:
 
             return events_reserved_sorted_by_date
 
+    @staticmethod
+    async def transfer_from_reserve_to_event(event_id: int, user_id: int):
+        """Перевод пользователя из резерва в основу"""
+        await AsyncOrm.add_user_to_event(event_id, user_id)
+        await AsyncOrm.delete_from_reserve(event_id, user_id)
+
+    @staticmethod
+    async def delete_from_reserve(event_id: int, user_id: int):
+        """Удаление пользователя из резерва"""
+        async with async_session_factory() as session:
+            query = delete(tables.Reserved) \
+                .where(and_(
+                tables.Reserved.event_id == event_id,
+                tables.Reserved.user_id == user_id
+            ))
+
+            await session.execute(query)
+            await session.flush()
+            await session.commit()
+
     # PAYMENTS
     @staticmethod
     async def create_payments(user_id: int, event_id: int):
