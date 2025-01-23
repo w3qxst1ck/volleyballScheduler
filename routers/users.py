@@ -183,6 +183,12 @@ async def register_user_on_event_or_reserve(callback: types.CallbackQuery) -> No
     event_with_users = await AsyncOrm.get_event_with_users(event_id)
     user = await AsyncOrm.get_user_by_id(user_id)
 
+    # проверка на свободные места (для записи в основу)
+    if not event_with_users.places < len(event_with_users.users_registered):
+        await callback.message.edit_text("❗Вы не можете записаться на данное событие, "
+                                         "так как свободных мест нет")
+        return
+
     # если уровень соответствует
     if not user.level or user.level >= event_with_users.level:
 
@@ -222,17 +228,35 @@ async def register_paid_event(callback: types.CallbackQuery, bot: Bot) -> None:
     """Подтверждение оплаты от пользователя в основной состав события или резерв"""
     # определение запись в резерв или основу
     to_reserve = callback.data.split("_")[0] == "paid-reserve"
+
     user_id = int(callback.data.split("_")[1])
     event_id = int(callback.data.split("_")[2])
 
     user = await AsyncOrm.get_user_by_id(user_id)
-    event = await AsyncOrm.get_event_by_id(event_id)
+    event_with_users = await AsyncOrm.get_event_with_users(event_id)
 
     # если мероприятие уже неактивно
-    if not event.active:
+    if not event_with_users.active:
         await callback.message.edit_text(
             "⚠️ Запись невозможна, так как данное событие уже недоступно\n\nВы можете посмотреть доступные"
             " события в главном меню /menu во вкладке \"🗓️ Все события\"",
+        )
+        return
+
+    # проверка на свободные места (для записи в основу), если свободных мест в процессе оплаты уже не стало
+    if not event_with_users.places < len(event_with_users.users_registered):
+        await callback.message.edit_text("❗Не удалось записаться на событие, так как все места уже заняты.\n\n"
+                                         f"Для возврата оплаты, свяжитесь с администратором @{settings.settings.main_admin_url}")
+        # оповещение администратора о необходимости вернуть деньги
+        event_date = utils.convert_date(event_with_users.date)
+        event_time = utils.convert_time(event_with_users.date)
+        msg_to_admin = f"❗❗Пользователь <a href='tg://user?id={user.tg_id}'>{user.firstname} {user.lastname}</a> перевел оплату за событие " \
+                       f"<b>{event_with_users.type}</b> \"{event_with_users.title}\" <b>{event_date} {event_time}</b> <b>{event_with_users.price} руб.</b>, " \
+                       f"но не был записан, так как во время записи свободные кончились.\n\n" \
+                       f"Необходимо вернуть пользователю оплату в размере <b>{event_with_users.price} руб.</b>"
+        await bot.send_message(
+            settings.settings.main_admin_tg_id,
+            msg_to_admin
         )
         return
 
@@ -240,17 +264,17 @@ async def register_paid_event(callback: types.CallbackQuery, bot: Bot) -> None:
     await AsyncOrm.create_payments(user_id, event_id)
 
     # оповещение администратора
-    event_date = utils.convert_date(event.date)
-    event_time = utils.convert_time(event.date)
+    event_date = utils.convert_date(event_with_users.date)
+    event_time = utils.convert_time(event_with_users.date)
 
     if to_reserve:
         msg_to_admin = f"Пользователь <a href='tg://user?id={user.tg_id}'>{user.firstname} {user.lastname}</a> " \
-                       f"оплатил <b>запись в резерв</b> события <b>{event.type}</b> \"{event.title}\" <b>{event_date} {event_time}</b> " \
-                       f"на сумму <b>{event.price} руб.</b> \n\nПодтвердите или отклоните оплату"
+                       f"оплатил <b>запись в резерв</b> события <b>{event_with_users.type}</b> \"{event_with_users.title}\" <b>{event_date} {event_time}</b> " \
+                       f"на сумму <b>{event_with_users.price} руб.</b> \n\nПодтвердите или отклоните оплату"
     else:
         msg_to_admin = f"Пользователь <a href='tg://user?id={user.tg_id}'>{user.firstname} {user.lastname}</a> " \
-                       f"оплатил <b>{event.type}</b> \"{event.title}\" <b>{event_date} {event_time}</b> " \
-                       f"на сумму <b>{event.price} руб.</b> \n\nПодтвердите или отклоните оплату"
+                       f"оплатил <b>{event_with_users.type}</b> \"{event_with_users.title}\" <b>{event_date} {event_time}</b> " \
+                       f"на сумму <b>{event_with_users.price} руб.</b> \n\nПодтвердите или отклоните оплату"
 
     # формирование клавиатуры для подтверждения оплаты в резерв или основу
     if to_reserve:
@@ -267,11 +291,11 @@ async def register_paid_event(callback: types.CallbackQuery, bot: Bot) -> None:
     # формирование текста ответу пользователю об ожидании подтверждения оплаты
     if to_reserve:
         answer_text = f"🔔 <b>Автоматическое уведомление</b>\n\n"\
-                      f"Ваш платеж на сумму {event.price} руб. ожидает подтверждение администратором. "\
+                      f"Ваш платеж на сумму {event_with_users.price} руб. ожидает подтверждение администратором. "\
                       f"После подтверждения вам будет отправлено уведомление о записи <b>в резерв события</b>.\n\n"
     else:
         answer_text = f"🔔 <b>Автоматическое уведомление</b>\n\n"\
-                      f"Ваш платеж на сумму {event.price} руб. ожидает подтверждение администратором. "\
+                      f"Ваш платеж на сумму {event_with_users.price} руб. ожидает подтверждение администратором. "\
                       f"После подтверждения вам будет отправлено уведомление о записи на событие.\n\n"
 
     answer_text += "⏳ <b>Дождитесь подтверждения оплаты от администратора</b>\n\n" \
