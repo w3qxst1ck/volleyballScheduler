@@ -268,18 +268,16 @@ async def register_paid_event(callback: types.CallbackQuery, bot: Bot) -> None:
     if to_reserve:
         answer_text = f"🔔 <b>Автоматическое уведомление</b>\n\n"\
                       f"Ваш платеж на сумму {event.price} руб. ожидает подтверждение администратором. "\
-                      f"После подтверждения вам будет отправлено уведомление о записи <b>в резерв события</b>."
+                      f"После подтверждения вам будет отправлено уведомление о записи <b>в резерв события</b>.\n\n"
     else:
         answer_text = f"🔔 <b>Автоматическое уведомление</b>\n\n"\
                       f"Ваш платеж на сумму {event.price} руб. ожидает подтверждение администратором. "\
-                      f"После подтверждения вам будет отправлено уведомление о записи на событие."
+                      f"После подтверждения вам будет отправлено уведомление о записи на событие.\n\n"
+
+    answer_text += "⏳ <b>Дождитесь подтверждения оплаты от администратора</b>\n\n" \
+                   "Вы можете отслеживать статус оплаты во вкладке \"👨🏻‍💻 Главное меню\" в разделе \"🏐 Мои события\""
 
     await callback.message.edit_text(answer_text)
-
-    msg = "⏳ <b>Дождитесь подтверждения оплаты от администратора</b>\n\n" \
-          "Вы можете отслеживать статус оплаты во вкладке \"👨🏻‍💻 Главное меню\" в разделе \"🏐 Мои события\""
-
-    await callback.message.answer(msg)
     await callback.message.answer(ms.main_menu_message(), reply_markup=kb.menu_users_keyboard().as_markup())
 
 
@@ -320,7 +318,10 @@ async def my_event_info_handler(callback: types.CallbackQuery) -> None:
     msg = ms.event_card_for_user_message(event, payment, reserved_users)
 
     # для кнопки отмены
-    reserved_event = len(reserved_users) > 0
+    reserved_event = False
+    for reserve in reserved_users:
+        if reserve.user.id == payment.user_id:
+            reserved_event = True
 
     await callback.message.edit_text(
         msg,
@@ -329,19 +330,24 @@ async def my_event_info_handler(callback: types.CallbackQuery) -> None:
     )
 
 
-@router.callback_query(lambda callback: callback.data.split("_")[0] == "unreg-user")
+@router.callback_query(lambda callback: callback.data.split("_")[0] == "unreg-user"
+                       or callback.data.split("_")[0] == "unreg-user-reserve")
 async def unregister_form_my_event_handler(callback: types.CallbackQuery) -> None:
     """Отмена регистрации на событие в Моих мероприятиях"""
     event_id = int(callback.data.split("_")[1])
     user_id = int(callback.data.split("_")[2])
+    unreg_from_reserve = callback.data.split("_")[0] == "unreg-user-reserve"
 
     event = await AsyncOrm.get_event_by_id(event_id)
     payment = await AsyncOrm.get_payment_by_event_and_user(event_id, user_id)
 
-    await callback.message.edit_text(
-        f"<b>Вы действительно хотите отменить свою запись на событие \"{event.type}\" {utils.convert_date(event.date)} в {utils.convert_time(event.date)}?</b>",
-        reply_markup=kb.yes_no_keyboard_for_unreg_from_event(event_id, user_id, payment.id).as_markup()
-    )
+    if unreg_from_reserve:
+        pass
+    else:
+        await callback.message.edit_text(
+            f"<b>Вы действительно хотите отменить свою запись на событие \"{event.type}\" {utils.convert_date(event.date)} в {utils.convert_time(event.date)}?</b>",
+            reply_markup=kb.yes_no_keyboard_for_unreg_from_event(event_id, user_id, payment.id).as_markup()
+        )
 
 
 @router.callback_query(lambda callback: callback.data.split("_")[0] == "unreg-user-confirmed")
@@ -378,6 +384,21 @@ async def unregister_form_my_event_handler(callback: types.CallbackQuery, bot: B
               "⏳ - ожидается подтверждение оплаты от администратора"
 
     await callback.message.answer(msg, reply_markup=kb.user_events(active_events, reserved_events).as_markup())
+
+    # добор из резерва
+    users_in_reserved = await AsyncOrm.get_reserved_users_by_event_id(event.id)
+    event_has_reserve = len(users_in_reserved) > 0
+    if event_has_reserve:
+        transfered_user = users_in_reserved[0].user
+        await AsyncOrm.transfer_from_reserve_to_event(event.id, transfered_user.id)
+
+        # оповещение человека записанного из резерва
+        notify_msg = f"🔔 <b>Автоматическое уведомление</b>\n\n" \
+                     f"Вы записаны на <b>{event.type}</b> {event.title} на " \
+                     f"<b>{utils.convert_date(event.date)}</b> в <b>{utils.convert_time(event.date)}</b> " \
+                     f"из резерва, так как один из участников отменил запись"
+
+        await bot.send_message(transfered_user.tg_id, notify_msg)
 
     # оповещение админа
     user = await AsyncOrm.get_user_by_id(user_id)

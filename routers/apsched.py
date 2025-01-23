@@ -55,19 +55,6 @@ async def update_events():
             await AsyncOrm.update_event_status_to_false(event.id)
 
 
-async def check_need_reserve():
-    """Проверка нужно ли брать людей из резерва"""
-    active_events_with_users = await AsyncOrm.get_events_with_users(only_active=True)
-
-    for event in active_events_with_users:
-        users_reserved = await AsyncOrm.get_reserved_users_by_event_id(event.id)
-        event_is_not_full = event.places > len(event.users_registered)
-        event_has_reserve = len(users_reserved) > 0
-
-        if event_is_not_full and event_has_reserve:
-            await AsyncOrm.transfer_from_reserve_to_event()
-
-
 async def notify_users_about_events(bot: aiogram.Bot):
     """Напоминание пользователям о событии, на которое они записались (за день до события)"""
     events = await AsyncOrm.get_events_with_users()
