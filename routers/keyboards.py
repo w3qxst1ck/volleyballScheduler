@@ -124,7 +124,7 @@ def my_event_card_keyboard(payment: Payment, reserved_event: bool = False) -> In
         if reserved_event:
             keyboard.row(
                 InlineKeyboardButton(
-                    text=f"❌ Отменить запись",
+                    text=f"❌ Отменить запись в резерв",
                     callback_data=f"unreg-user-reserve_{payment.event_id}_{payment.user_id}"))
         else:
             keyboard.row(
@@ -165,9 +165,9 @@ def yes_no_keyboard_for_unreg_from_event(event_id: int, user_id: int, payment_id
     keyboard = InlineKeyboardBuilder()
 
     if reserved_event:
-        keyboard.row(InlineKeyboardButton(text="Да", callback_data=f"unreg-user-confirmed_{event_id}_{user_id}"))
-    else:
         keyboard.row(InlineKeyboardButton(text="Да", callback_data=f"unreg-user-confirmed-reserve_{event_id}_{user_id}"))
+    else:
+        keyboard.row(InlineKeyboardButton(text="Да", callback_data=f"unreg-user-confirmed_{event_id}_{user_id}"))
     keyboard.row(InlineKeyboardButton(text="Нет", callback_data=f"my-events_{payment_id}"))
     keyboard.adjust(2)
 

@@ -184,7 +184,7 @@ async def register_user_on_event_or_reserve(callback: types.CallbackQuery) -> No
     user = await AsyncOrm.get_user_by_id(user_id)
 
     # проверка на свободные места (для записи в основу)
-    if not event_with_users.places < len(event_with_users.users_registered):
+    if not event_with_users.places > len(event_with_users.users_registered) and not to_reserve:
         await callback.message.edit_text("❗Вы не можете записаться на данное событие, "
                                          "так как свободных мест нет")
         return
@@ -244,7 +244,7 @@ async def register_paid_event(callback: types.CallbackQuery, bot: Bot) -> None:
         return
 
     # проверка на свободные места (для записи в основу), если свободных мест в процессе оплаты уже не стало
-    if not event_with_users.places < len(event_with_users.users_registered):
+    if not event_with_users.places > len(event_with_users.users_registered) and not to_reserve:
         await callback.message.edit_text("❗Не удалось записаться на событие, так как все места уже заняты.\n\n"
                                          f"Для возврата оплаты, свяжитесь с администратором @{settings.settings.main_admin_url}")
         # оповещение администратора о необходимости вернуть деньги
@@ -252,7 +252,7 @@ async def register_paid_event(callback: types.CallbackQuery, bot: Bot) -> None:
         event_time = utils.convert_time(event_with_users.date)
         msg_to_admin = f"❗❗Пользователь <a href='tg://user?id={user.tg_id}'>{user.firstname} {user.lastname}</a> перевел оплату за событие " \
                        f"<b>{event_with_users.type}</b> \"{event_with_users.title}\" <b>{event_date} {event_time}</b> <b>{event_with_users.price} руб.</b>, " \
-                       f"но не был записан, так как во время записи свободные кончились.\n\n" \
+                       f"но не был записан, так как во время записи свободные места кончились.\n\n" \
                        f"Необходимо вернуть пользователю оплату в размере <b>{event_with_users.price} руб.</b>"
         await bot.send_message(
             settings.settings.main_admin_tg_id,
@@ -388,19 +388,16 @@ async def unregister_form_my_event_handler(callback: types.CallbackQuery, bot: B
         await AsyncOrm.delete_from_reserve(event_id, user_id)
     else:
         await AsyncOrm.delete_user_from_event(event_id, user_id)
-        await AsyncOrm.delete_payment(event_id, user_id)
+
+    await AsyncOrm.delete_payment(event_id, user_id)
 
     event = await AsyncOrm.get_event_by_id(event_id)
 
     # оповещение пользователя
-    if reserved_event:
-        await callback.message.edit_text(f"🔔 <b>Автоматическое уведомление</b>\n\n"
-                                         f"<b>Вы отменили запись в резерв на событие \"{event.type}\" {utils.convert_date(event.date)} "
-                                         f"в {utils.convert_time(event.date)}</b>")
-    else:
-        await callback.message.edit_text(f"🔔 <b>Автоматическое уведомление</b>\n\n"
-                                         f"<b>Вы отменили запись на событие \"{event.type}\" {utils.convert_date(event.date)} "
-                                         f"в {utils.convert_time(event.date)}</b>")
+    user_msg = f"🔔 <b>Автоматическое уведомление</b>\n\n" \
+               f"<b>Вы отменили запись {'в резерв ' if reserved_event else ''}на событие \"{event.type}\" {utils.convert_date(event.date)} " \
+               f"в {utils.convert_time(event.date)}</b>\n\nДля возврата оплаты, свяжитесь с администратором @{settings.settings.main_admin_url}"
+    await callback.message.edit_text(user_msg)
 
     # возврат ко вкладке мои мероприятия
     events = await AsyncOrm.get_user_payments_with_events_and_users(str(callback.from_user.id))
