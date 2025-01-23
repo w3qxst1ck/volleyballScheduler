@@ -336,13 +336,15 @@ async def unregister_form_my_event_handler(callback: types.CallbackQuery) -> Non
     """Отмена регистрации на событие в Моих мероприятиях"""
     event_id = int(callback.data.split("_")[1])
     user_id = int(callback.data.split("_")[2])
-    unreg_from_reserve = callback.data.split("_")[0] == "unreg-user-reserve"
+    reserved_event = callback.data.split("_")[0] == "unreg-user-reserve"
 
     event = await AsyncOrm.get_event_by_id(event_id)
     payment = await AsyncOrm.get_payment_by_event_and_user(event_id, user_id)
 
-    if unreg_from_reserve:
-        pass
+    if reserved_event:
+        await callback.message.edit_text(
+            f"<b>Вы действительно хотите отменить свою запись в резерв на событие \"{event.type}\" {utils.convert_date(event.date)} в {utils.convert_time(event.date)}?</b>",
+            reply_markup=kb.yes_no_keyboard_for_unreg_from_event(event_id, user_id, payment.id, reserved_event=True).as_markup())
     else:
         await callback.message.edit_text(
             f"<b>Вы действительно хотите отменить свою запись на событие \"{event.type}\" {utils.convert_date(event.date)} в {utils.convert_time(event.date)}?</b>",
@@ -350,19 +352,31 @@ async def unregister_form_my_event_handler(callback: types.CallbackQuery) -> Non
         )
 
 
-@router.callback_query(lambda callback: callback.data.split("_")[0] == "unreg-user-confirmed")
+@router.callback_query(lambda callback: callback.data.split("_")[0] == "unreg-user-confirmed"
+                       or callback.data.split("_")[0] == "unreg-user-confirmed-reserve")
 async def unregister_form_my_event_handler(callback: types.CallbackQuery, bot: Bot) -> None:
     """Подтверждение отмены регистрации на событие в Моих мероприятиях"""
     event_id = int(callback.data.split("_")[1])
     user_id = int(callback.data.split("_")[2])
+    reserved_event = callback.data.split("_")[0] == "unreg-user-confirmed-reserve"
 
-    await AsyncOrm.delete_user_from_event(event_id, user_id)
-    await AsyncOrm.delete_payment(event_id, user_id)
+    if reserved_event:
+        await AsyncOrm.delete_from_reserve(event_id, user_id)
+    else:
+        await AsyncOrm.delete_user_from_event(event_id, user_id)
+        await AsyncOrm.delete_payment(event_id, user_id)
 
     event = await AsyncOrm.get_event_by_id(event_id)
+
     # оповещение пользователя
-    await callback.message.edit_text(f"🔔 <b>Автоматическое уведомление</b>\n\n"
-                                     f"<b>Вы отменили запись на событие \"{event.type}\" {utils.convert_date(event.date)} в {utils.convert_time(event.date)}</b>")
+    if reserved_event:
+        await callback.message.edit_text(f"🔔 <b>Автоматическое уведомление</b>\n\n"
+                                         f"<b>Вы отменили запись в резерв на событие \"{event.type}\" {utils.convert_date(event.date)} "
+                                         f"в {utils.convert_time(event.date)}</b>")
+    else:
+        await callback.message.edit_text(f"🔔 <b>Автоматическое уведомление</b>\n\n"
+                                         f"<b>Вы отменили запись на событие \"{event.type}\" {utils.convert_date(event.date)} "
+                                         f"в {utils.convert_time(event.date)}</b>")
 
     # возврат ко вкладке мои мероприятия
     events = await AsyncOrm.get_user_payments_with_events_and_users(str(callback.from_user.id))
@@ -385,30 +399,32 @@ async def unregister_form_my_event_handler(callback: types.CallbackQuery, bot: B
 
     await callback.message.answer(msg, reply_markup=kb.user_events(active_events, reserved_events).as_markup())
 
-    # добор из резерва
-    users_in_reserved = await AsyncOrm.get_reserved_users_by_event_id(event.id)
-    event_has_reserve = len(users_in_reserved) > 0
-    if event_has_reserve:
-        transfered_user = users_in_reserved[0].user
-        await AsyncOrm.transfer_from_reserve_to_event(event.id, transfered_user.id)
+    # добор из резерва при отмене записи из основы
+    if not reserved_event:
+        users_in_reserved = await AsyncOrm.get_reserved_users_by_event_id(event.id)
+        event_has_reserve = len(users_in_reserved) > 0
+        if event_has_reserve:
+            transfered_user = users_in_reserved[0].user
+            await AsyncOrm.transfer_from_reserve_to_event(event.id, transfered_user.id)
 
-        # оповещение человека записанного из резерва
-        notify_msg = f"🔔 <b>Автоматическое уведомление</b>\n\n" \
-                     f"Вы записаны на <b>{event.type}</b> {event.title} на " \
-                     f"<b>{utils.convert_date(event.date)}</b> в <b>{utils.convert_time(event.date)}</b> " \
-                     f"из резерва, так как один из участников отменил запись"
+            # оповещение человека записанного из резерва
+            notify_msg = f"🔔 <b>Автоматическое уведомление</b>\n\n" \
+                         f"Вы записаны на <b>{event.type}</b> {event.title} на " \
+                         f"<b>{utils.convert_date(event.date)}</b> в <b>{utils.convert_time(event.date)}</b> " \
+                         f"из резерва, так как один из участников отменил запись"
 
-        await bot.send_message(transfered_user.tg_id, notify_msg)
+            await bot.send_message(transfered_user.tg_id, notify_msg)
 
-    # оповещение админа
-    user = await AsyncOrm.get_user_by_id(user_id)
-    admin_message = f"🔔 <b>Автоматическое уведомление</b>\n\n" \
-                    f"Пользователь <b>{user.username} {user.lastname}</b> отменил запись на <b>{event.type}</b> {event.title} на " \
-                    f"<b>{utils.convert_date(event.date)}</b> в <b>{utils.convert_time(event.date)}</b>"
-    try:
-        await bot.send_message(settings.settings.main_admin_tg_id, admin_message)
-    except:
-        pass
+    # оповещение админа при отмене записи из основы
+    if not reserved_event:
+        user = await AsyncOrm.get_user_by_id(user_id)
+        admin_message = f"🔔 <b>Автоматическое уведомление</b>\n\n" \
+                        f"Пользователь <b>{user.username} {user.lastname}</b> отменил запись на <b>{event.type}</b> {event.title} на " \
+                        f"<b>{utils.convert_date(event.date)}</b> в <b>{utils.convert_time(event.date)}</b>"
+        try:
+            await bot.send_message(settings.settings.main_admin_tg_id, admin_message)
+        except:
+            pass
 
 
 # USER PROFILE

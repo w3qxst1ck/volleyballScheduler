@@ -156,17 +156,18 @@ def event_card_keyboard(event_id: int,
         else:
             keyboard.row(InlineKeyboardButton(text=f"✅ Записаться", callback_data=f"reg-user_{event_id}_{user_id}"))
 
-
     keyboard.row(InlineKeyboardButton(text=f"🔙 назад", callback_data=f"{back_to}"))
-
     return keyboard
 
 
-def yes_no_keyboard_for_unreg_from_event(event_id: int, user_id: int, payment_id: int) -> InlineKeyboardBuilder:
+def yes_no_keyboard_for_unreg_from_event(event_id: int, user_id: int, payment_id: int, reserved_event: bool = False) -> InlineKeyboardBuilder:
     """Подтверждение удаления с события в Моих мероприятиях"""
     keyboard = InlineKeyboardBuilder()
 
-    keyboard.row(InlineKeyboardButton(text="Да", callback_data=f"unreg-user-confirmed_{event_id}_{user_id}"))
+    if reserved_event:
+        keyboard.row(InlineKeyboardButton(text="Да", callback_data=f"unreg-user-confirmed_{event_id}_{user_id}"))
+    else:
+        keyboard.row(InlineKeyboardButton(text="Да", callback_data=f"unreg-user-confirmed-reserve_{event_id}_{user_id}"))
     keyboard.row(InlineKeyboardButton(text="Нет", callback_data=f"my-events_{payment_id}"))
     keyboard.adjust(2)
 
