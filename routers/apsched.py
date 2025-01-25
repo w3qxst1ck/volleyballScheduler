@@ -5,6 +5,7 @@ import pytz
 
 from database.orm import AsyncOrm
 import routers.messages as ms
+from routers import utils
 from settings import settings
 
 
@@ -16,7 +17,7 @@ async def run_every_day(bot: aiogram.Bot):
 
 async def run_every_hour(bot: aiogram.Bot) -> None:
     """Выполняется каждый час"""
-    await update_events()
+    await update_events(bot)
     await check_min_users_count(bot)
 
 
@@ -44,7 +45,7 @@ async def check_min_users_count(bot: aiogram.Bot):
                     await bot.send_message(user.tg_id, msg)
 
 
-async def update_events():
+async def update_events(bot: aiogram.Bot):
     """Изменение статуса прошедших событий"""
     events = await AsyncOrm.get_events()
     for event in events:
@@ -53,6 +54,22 @@ async def update_events():
         if datetime.datetime.now(tz=pytz.timezone("Europe/Moscow")) - datetime.timedelta(hours=1) > \
                 event.date.astimezone(tz=pytz.timezone("Europe/Moscow")) - datetime.timedelta(hours=3):
             await AsyncOrm.update_event_status_to_false(event.id)
+
+            # отправляем администратору список людей резерва, для возвращения оплаты
+            reserve_users = await AsyncOrm.get_reserved_users_by_event_id(event.id)
+            if reserve_users:
+                date = utils.convert_date(event.date)
+                time = utils.convert_time(event.date)
+                msg_for_admin = f"Необходимо вернуть деньги следующим <b>из резервным пользователям</b> " \
+                      f"на мероприятие {event.type} \"{event.title}\" {date} в {time}:\n\n"
+                for user in reserve_users:
+                    msg_for_admin += f"<a href='tg://user?id={user.tg_id}'>{user.firstname} {user.lastname}</a> - {event.price} руб."
+
+                # отправляем сообщение администратору
+                try:
+                    await bot.send_message(settings.main_admin_tg_id, msg_for_admin)
+                except:
+                    pass
 
 
 async def notify_users_about_events(bot: aiogram.Bot):

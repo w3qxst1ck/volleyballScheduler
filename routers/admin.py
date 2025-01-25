@@ -454,7 +454,8 @@ async def confirm_payment(callback: types.CallbackQuery, bot: Bot) -> None:
     event_id = int(callback.data.split("_")[2])
     user_id = int(callback.data.split("_")[3])
 
-    event = await AsyncOrm.get_event_by_id(event_id)
+    # event = await AsyncOrm.get_event_by_id(event_id)
+    event = await AsyncOrm.get_event_with_users(event_id)
     user = await AsyncOrm.get_user_by_id(user_id)
 
     event_date = utils.convert_date(event.date)
@@ -473,15 +474,25 @@ async def confirm_payment(callback: types.CallbackQuery, bot: Bot) -> None:
     if confirm == "ok":
         # подтверждение оплаты
         await AsyncOrm.update_payment_status(event_id, user_id)
-        # создание записи в таблице event_users
+
+        # создание записи в таблице event_users или в reserved
         if to_reserve:
             await AsyncOrm.add_user_to_reserve(event_id, user_id)
+
         else:
-            await AsyncOrm.add_user_to_event(event_id, user_id)
+            # проверка если уже полный набор (отлов бага с одновременной оплатой)
+            if not event.places > len(event.users_registered):
+                # записываем в резерв
+                await AsyncOrm.add_user_to_reserve(event_id, user_id)
+                to_reserve = True
+
+            # если еще есть места записываем на событие
+            else:
+                await AsyncOrm.add_user_to_event(event_id, user_id)
 
         # сообщение админу
         if to_reserve:
-            answer_ok = answer_text + "Оплата подтверждена ✅\nПользователь записан в резерв"
+            answer_ok = answer_text + "Оплата подтверждена ✅\nПользователь записан <b>в резерв</b>, так как свободных мест уже нет."
         else:
             answer_ok = answer_text + "Оплата подтверждена ✅\nПользователь записан на событие"
         await callback.message.edit_text(answer_ok)
@@ -491,7 +502,8 @@ async def confirm_payment(callback: types.CallbackQuery, bot: Bot) -> None:
         time = utils.convert_time(event.date)
 
         if to_reserve:
-            msg = f"🔔 <b>Автоматическое уведомление</b>\n\nОплата прошла успешно ✅\nВы <b>записаны в резерв</b> на событие {event.type} \"{event.title}\" {date} в {time}"
+            msg = f"🔔 <b>Автоматическое уведомление</b>\n\nОплата прошла успешно ✅\nВы <b>записаны в резерв</b> " \
+                  f"на событие {event.type} \"{event.title}\" {date} в {time}, так как свободных мест пока нет"
         else:
             msg = f"🔔 <b>Автоматическое уведомление</b>\n\nОплата прошла успешно ✅\nВы записаны на {event.type} \"{event.title}\" {date} в {time}"
         await bot.send_message(user.tg_id, msg)
