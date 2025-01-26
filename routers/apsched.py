@@ -60,10 +60,10 @@ async def update_events(bot: aiogram.Bot):
             if reserve_users:
                 date = utils.convert_date(event.date)
                 time = utils.convert_time(event.date)
-                msg_for_admin = f"Необходимо вернуть деньги следующим <b>из резервным пользователям</b> " \
-                      f"на мероприятие {event.type} \"{event.title}\" {date} в {time}:\n\n"
+                msg_for_admin = f"Необходимо вернуть деньги следующим <b>пользователям из резерва</b> " \
+                      f"на событие {event.type} \"{event.title}\" {date} в {time}:\n\n"
                 for user in reserve_users:
-                    msg_for_admin += f"<a href='tg://user?id={user.tg_id}'>{user.firstname} {user.lastname}</a> - {event.price} руб."
+                    msg_for_admin += f"<a href='tg://user?id={user.user.tg_id}'>{user.user.firstname} {user.user.lastname}</a> - {event.price} руб.\n"
 
                 # отправляем сообщение администратору
                 try:
