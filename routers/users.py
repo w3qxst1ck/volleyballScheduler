@@ -125,7 +125,7 @@ async def user_events_dates_handler(callback: types.CallbackQuery) -> None:
     weekday = settings.settings.weekdays[datetime.weekday(date)]
 
     user = await AsyncOrm.get_user_by_tg_id(str(callback.from_user.id))
-    events = await AsyncOrm.get_events_for_date(date)
+    events = await AsyncOrm.get_events_for_date(date, only_active=True)
     reserved_events = await AsyncOrm.get_reserved_events_by_user_id(user.id)
 
     msg = f"События на <b>{converted_date} ({weekday})</b>:\n\n" \

@@ -215,16 +215,27 @@ class AsyncOrm:
             return events
 
     @staticmethod
-    async def get_events_for_date(date: datetime.date) -> list[schemas.EventRel]:
+    async def get_events_for_date(date: datetime.date, only_active: bool = False) -> list[schemas.EventRel]:
         """Получение событий в определенную дату"""
         date_before = datetime.datetime.combine(date, datetime.datetime.min.time())
         date_after = date_before + datetime.timedelta(days=1)
 
         async with async_session_factory() as session:
-            query = select(tables.Event)\
-                .filter(and_(tables.Event.date > date_before, tables.Event.date < date_after)) \
-                .options(joinedload(tables.Event.users_registered))\
-                .order_by(tables.Event.date.asc())
+            if only_active:
+                query = select(tables.Event) \
+                    .filter(and_(
+                    tables.Event.date > date_before, tables.Event.date < date_after,
+                    tables.Event.active == True,
+                )) \
+                    .options(joinedload(tables.Event.users_registered)) \
+                    .order_by(tables.Event.date.asc())
+            else:
+                query = select(tables.Event)\
+                    .filter(and_(
+                        tables.Event.date > date_before, tables.Event.date < date_after,
+                        ))\
+                    .options(joinedload(tables.Event.users_registered))\
+                    .order_by(tables.Event.date.asc())
 
             result = await session.execute(query)
             rows = result.unique().scalars().all()
