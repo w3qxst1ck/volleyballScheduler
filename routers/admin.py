@@ -84,10 +84,28 @@ async def event_delete_user_handler(callback: types.CallbackQuery, bot: Bot) -> 
 
     await callback.message.edit_text("Пользователь удален с события ✅")
 
+    # добор из резерва при удалении человека из основы
+    users_in_reserved = await AsyncOrm.get_reserved_users_by_event_id(event.id)
+    event_has_reserve = len(users_in_reserved) > 0
+    if event_has_reserve:
+        transfered_user = users_in_reserved[0].user
+        await AsyncOrm.transfer_from_reserve_to_event(event.id, transfered_user.id)
+
+        # оповещение человека записанного из резерва
+        notify_msg = f"🔔 <b>Автоматическое уведомление</b>\n\n" \
+                     f"Вы записаны на <b>{event.type}</b> {event.title} на " \
+                     f"<b>{utils.convert_date(event.date)}</b> в <b>{utils.convert_time(event.date)}</b> " \
+                     f"из резерва, так как один из участников отменил запись"
+
+        await bot.send_message(transfered_user.tg_id, notify_msg)
+
     # возврат к карточке мероприятия
-    # получаем пользователь в резерве события
+    # получаем пользователей в резерве события
     reserved_users = await AsyncOrm.get_reserved_users_by_event_id(event_id)
-    msg_for_admin = ms.event_card_for_user_message(event, payment=None, reserved_users=reserved_users)
+    # получаем обновленное событие
+    updated_event = await AsyncOrm.get_event_with_users(event_id)
+    # отправляем сообщение администратору (обновленное "Управление событиями")
+    msg_for_admin = ms.event_card_for_user_message(updated_event, payment=None, reserved_users=reserved_users)
     msg_for_admin += "\nЧтобы удалить участника с события, нажмите кнопку с соответствующим номером участника"
     await callback.message.answer(msg_for_admin, disable_web_page_preview=True, reply_markup=kb.event_card_keyboard_admin(event).as_markup())
 
