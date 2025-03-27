@@ -467,6 +467,17 @@ class AsyncOrm:
             await session.flush()
             await session.commit()
 
+    @staticmethod
+    async def get_all_players_info() -> List[schemas.User]:
+        """Получение всех участников"""
+        async with async_session_factory() as session:
+            query = select(tables.User).order_by(tables.User.id)
+            result = await session.execute(query)
+            rows = result.scalars().all()
+
+            users = [schemas.User.model_validate(row, from_attributes=True) for row in rows]
+            return users
+
 
 
 

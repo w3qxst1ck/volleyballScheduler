@@ -1,7 +1,11 @@
 from datetime import datetime
 from typing import List
 
+from database import schemas
+from database.orm import AsyncOrm
+
 import pytz
+import pandas as pd
 
 from settings import settings
 
@@ -145,6 +149,28 @@ def get_weekday_from_date(date_str: str) -> str:
     date = datetime.strptime(date_str, "%d.%m.%Y").date()
     weekday = settings.weekdays[datetime.weekday(date)]
     return weekday
+
+
+async def write_excel_file(data: List[schemas.User]) -> None:
+    """Создание файла"""
+    pd.options.display.max_colwidth = 20
+
+    df = pd.DataFrame(
+        {
+            "№ п/п": [user.id for user in data],
+            "Имя": [user.firstname for user in data],
+            "Фамилия": [user.lastname for user in data],
+            "Уровень": [settings.levels[user.level] if user.level else "Не определен" for user in data]
+        }
+    )
+    # writer = pd.ExcelWriter('players/players.xlsx', engine='xlsxwriter')
+
+    df.style.set_properties(**{'text-align': 'center'})
+    # print(df)
+
+    df.to_excel('players/players.xlsx', index=False)
+    # writer.close()
+    print('DataFrame is written to Excel File successfully.')
 
 
 

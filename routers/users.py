@@ -541,6 +541,13 @@ async def help_handler(message: types.Message) -> None:
     await message.answer(msg)
 
 
+@router.message(Command("players"))
+async def players(message: types.Message) -> None:
+    """Получение excel файла со всеми игроками"""
+    players_data = await AsyncOrm.get_all_players_info()
+    await utils.write_excel_file(players_data)
+
+
 @router.callback_query(lambda callback: callback.data == "button_update_cancel", UpdateUserFSM.name)
 async def cancel_handler(callback: types.CallbackQuery, state: FSMContext):
     """Cancel update profile"""
