@@ -8,6 +8,7 @@ from aiogram.fsm.context import FSMContext
 from database import schemas
 from database.orm import AsyncOrm
 from routers.middlewares import CheckPrivateMessageMiddleware, CheckIsAdminMiddleware
+from routers.utils import write_excel_file
 from settings import settings
 from routers.fsm_states import AddEventFSM
 from routers import keyboards as kb
@@ -539,3 +540,13 @@ async def confirm_payment(callback: types.CallbackQuery, bot: Bot) -> None:
         msg = f"🔔 <b>Автоматическое уведомление</b>\n\n❌ Администратор оплату не подтвердил\n" \
                        f"Вы можете связаться с администрацией канала @{settings.main_admin_url}"
         await bot.send_message(user.tg_id, msg)
+
+
+@router.message(Command("excel"))
+async def players(message: types.Message) -> None:
+    """Принудительное создание excel файла с игроками"""
+    try:
+        users = await AsyncOrm.get_all_players_info()
+        await write_excel_file(users)
+    except Exception as e:
+        print(f"Не получилось принудительно создать players.xlsx: {e}")
