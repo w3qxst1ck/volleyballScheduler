@@ -5,7 +5,7 @@ from database import schemas
 
 import pytz
 from openpyxl import Workbook
-from openpyxl.styles import Font, Alignment
+from openpyxl.styles import Font, Alignment, Border, Side
 from settings import settings
 
 
@@ -153,10 +153,23 @@ def get_weekday_from_date(date_str: str) -> str:
 async def write_excel_file(data: List[schemas.User]) -> None:
     """Создание файла"""
     wb = Workbook()
+
+    # удаление лишнего листа
+    del wb["Sheet"]
+
+    # создание нового листа
     wb.create_sheet("Players", index=0)
     sheet = wb['Players']
+
+    # настройка стилей
     font = Font(bold=True)
     align_center = Alignment(horizontal="center")
+    border = Border(
+        left=Side(border_style="thin", color='FF000000'),
+        right=Side(border_style="thin", color='FF000000'),
+        top=Side(border_style="thin", color='FF000000'),
+        bottom=Side(border_style="thin", color='FF000000'),
+    )
 
     # width
     sheet.column_dimensions["A"].width = 10
@@ -179,9 +192,28 @@ async def write_excel_file(data: List[schemas.User]) -> None:
     sheet["C1"].font = font
     sheet["D1"].font = font
 
+    # border
+    sheet["A1"].border = border
+    sheet["B1"].border = border
+    sheet["C1"].border = border
+    sheet["D1"].border = border
+
     for idx, user in enumerate(data, start=1):
         level = settings.levels[user.level] if user.level else "Не определен"
         sheet.append([idx, user.firstname, user.lastname, level])
+
+        # выравнивание колонки А по центру
+        a_number = f"A{idx+1}"
+        sheet[a_number].alignment = align_center
+
+        # границы ячеек
+        b_number = f"B{idx+1}"
+        c_number = f"C{idx+1}"
+        d_number = f"D{idx+1}"
+        sheet[a_number].border = border
+        sheet[b_number].border = border
+        sheet[c_number].border = border
+        sheet[d_number].border = border
 
     wb.save("players/players.xlsx")
     print('DataFrame is written to Excel File successfully.')
