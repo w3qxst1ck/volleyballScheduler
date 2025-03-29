@@ -4,6 +4,7 @@ from aiogram import Router, types, Bot
 from aiogram.exceptions import TelegramBadRequest
 from aiogram.filters import Command, StateFilter
 from aiogram.fsm.context import FSMContext
+from aiogram.types import FSInputFile
 
 from routers.middlewares import CheckPrivateMessageMiddleware
 from routers import keyboards as kb, messages as ms
@@ -544,8 +545,13 @@ async def help_handler(message: types.Message) -> None:
 @router.message(Command("players"))
 async def players(message: types.Message) -> None:
     """Получение excel файла со всеми игроками"""
-    players_data = await AsyncOrm.get_all_players_info()
-    await utils.write_excel_file(players_data)
+    wait_msg = await message.answer("⏳ Запрос выполняется...")
+    try:
+        document = FSInputFile('players/players.xlsx')
+        await wait_msg.delete()
+        await message.answer_document(document)
+    except Exception as e:
+        print(f"Не получилось отправить players.xlsx пользователю {message.from_user.id}: {e}")
 
 
 @router.callback_query(lambda callback: callback.data == "button_update_cancel", UpdateUserFSM.name)

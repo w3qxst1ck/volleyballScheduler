@@ -2,11 +2,10 @@ from datetime import datetime
 from typing import List
 
 from database import schemas
-from database.orm import AsyncOrm
 
 import pytz
-import pandas as pd
-
+from openpyxl import Workbook
+from openpyxl.styles import Font, Alignment
 from settings import settings
 
 
@@ -153,23 +152,38 @@ def get_weekday_from_date(date_str: str) -> str:
 
 async def write_excel_file(data: List[schemas.User]) -> None:
     """Создание файла"""
-    pd.options.display.max_colwidth = 20
+    wb = Workbook()
+    wb.create_sheet("Players", index=0)
+    sheet = wb['Players']
+    font = Font(bold=True)
+    align_center = Alignment(horizontal="center")
 
-    df = pd.DataFrame(
-        {
-            "№ п/п": [user.id for user in data],
-            "Имя": [user.firstname for user in data],
-            "Фамилия": [user.lastname for user in data],
-            "Уровень": [settings.levels[user.level] if user.level else "Не определен" for user in data]
-        }
-    )
-    # writer = pd.ExcelWriter('players/players.xlsx', engine='xlsxwriter')
+    # width
+    sheet.column_dimensions["A"].width = 10
+    sheet.column_dimensions["B"].width = 20
+    sheet.column_dimensions["C"].width = 20
+    sheet.column_dimensions["D"].width = 20
 
-    df.style.set_properties(**{'text-align': 'center'})
-    # print(df)
+    # header
+    sheet.append(["№ п/п", "Имя", "Фамилия", "Уровень"])
 
-    df.to_excel('players/players.xlsx', index=False)
-    # writer.close()
+    # align
+    sheet["A1"].alignment = align_center
+    sheet["B1"].alignment = align_center
+    sheet["C1"].alignment = align_center
+    sheet["D1"].alignment = align_center
+
+    # font
+    sheet["A1"].font = font
+    sheet["B1"].font = font
+    sheet["C1"].font = font
+    sheet["D1"].font = font
+
+    for idx, user in enumerate(data, start=1):
+        level = settings.levels[user.level] if user.level else "Не определен"
+        sheet.append([idx, user.firstname, user.lastname, level])
+
+    wb.save("players/players.xlsx")
     print('DataFrame is written to Excel File successfully.')
 
 

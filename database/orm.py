@@ -471,7 +471,7 @@ class AsyncOrm:
     async def get_all_players_info() -> List[schemas.User]:
         """Получение всех участников"""
         async with async_session_factory() as session:
-            query = select(tables.User).order_by(tables.User.id)
+            query = select(tables.User).order_by(tables.User.firstname, tables.User.lastname)
             result = await session.execute(query)
             rows = result.scalars().all()
 

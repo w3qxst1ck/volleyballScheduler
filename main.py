@@ -53,6 +53,9 @@ async def start_bot() -> None:
     # проверка мероприятия на минимальное кол-во участников + перевод событий в неактивные
     scheduler.add_job(apsched.run_every_hour, trigger="cron", year='*', month='*', day="*", hour="*", minute=1,
                       second=0, start_date=datetime.now(), kwargs={"bot": bot})
+    # создание excel файла
+    scheduler.add_job(apsched.create_players_excel, trigger="cron", year='*', month='*', day="*", hour="*", minute="*/10",
+                      second=0, start_date=datetime.now())
 
     scheduler.start()
 

@@ -7,6 +7,7 @@ from database.orm import AsyncOrm
 import routers.messages as ms
 from routers import utils
 from settings import settings
+from routers.utils import write_excel_file
 
 
 async def run_every_day(bot: aiogram.Bot):
@@ -89,3 +90,9 @@ async def notify_users_about_events(bot: aiogram.Bot):
 async def delete_old_events():
     """Удаление событий которые были более settings.expire_event_days дней назад"""
     await AsyncOrm.delete_old_events(settings.expire_event_days)
+
+
+async def create_players_excel():
+    """Создание файла с игроками"""
+    users = await AsyncOrm.get_all_players_info()
+    await write_excel_file(users)
