@@ -33,6 +33,11 @@ class User(Base):
         secondary="events_users",
     )
 
+    teams: Mapped[list["Team"]] = relationship(
+        back_populates="users",
+        secondary="teams_users"
+    )
+
     payments: Mapped[list["PaymentsUserEvent"]] = relationship(
         back_populates="user",
     )
@@ -115,6 +120,100 @@ class Reserved(Base):
     event_id: Mapped[int] = mapped_column(ForeignKey("events.id", ondelete="CASCADE"))
     event: Mapped["Event"] = relationship(back_populates="reserved")
 
+
+class Tournament(Base):
+    """Таблица турниров"""
+    __tablename__ = "tournaments"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    type: Mapped[str]
+    title: Mapped[str] = mapped_column(index=True)
+    date: Mapped[datetime.datetime] = mapped_column(server_default=text("TIMEZONE('utc', now())"))
+    max_team_places: Mapped[int]
+    min_team_count: Mapped[int]
+    min_team_players: Mapped[int]
+    max_team_players: Mapped[int]
+    active: Mapped[bool] = mapped_column(default=True)
+    level: Mapped[int]
+    price: Mapped[int]
+
+    teams: Mapped[list["Team"]] = relationship(
+        back_populates="tournament",
+        secondary="tournaments_teams",
+    )
+
+    payments: Mapped[list["PaymentsTournament"]] = relationship(
+        back_populates="tournament"
+    )
+
+
+class Team(Base):
+    """Таблица команд для турнира"""
+    __tablename__ = "teams"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    title: Mapped[str] = mapped_column(index=True)
+    level: Mapped[int] = mapped_column(nullable=True)
+
+    users: Mapped[list["User"]] = relationship(
+        back_populates="teams",
+        secondary="teams_users",
+    )
+
+    payment: Mapped["PaymentsTournament"] = relationship(
+        back_populates="team",
+        uselist=False,
+        cascade="all, delete-orphan"
+    )
+
+    tournament_id: Mapped[int] = mapped_column(ForeignKey("tournaments.id", ondelete="CASCADE"))
+    tournament: Mapped["Tournament"] = relationship(back_populates="teams")
+
+
+class TeamsUsers(Base):
+    """Many to many relationship"""
+    __tablename__ = "teams_users"
+
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"),
+        primary_key=True
+    )
+
+    team_id: Mapped[int] = mapped_column(
+        ForeignKey("teams.id", ondelete="CASCADE"),
+        primary_key=True
+    )
+
+
+class TournamentsTeams(Base):
+    """Many-to-many relationship"""
+    __tablename__ = "tournaments_teams"
+
+    team_id: Mapped[int] = mapped_column(
+        ForeignKey("teams.id", ondelete="CASCADE"),
+        primary_key=True
+    )
+
+    tournament_id: Mapped[int] = mapped_column(
+        ForeignKey("tournaments.id", ondelete="CASCADE"),
+        primary_key=True
+    )
+
+
+class PaymentsTournament(Base):
+    """Полаты пользователями турниров"""
+
+    __tablename__ = "tournament_payments"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    paid: Mapped[bool] = mapped_column(default=False)   # True если пользователь нажал "Оплатил"
+    paid_confirm: Mapped[bool] = mapped_column(default=False)   # True если админ подтвердил платеж
+
+    tournament_id: Mapped[int] = mapped_column(ForeignKey("tournaments.id", ondelete="CASCADE"))
+    tournament: Mapped["Tournament"] = relationship(back_populates="payments")
+
+    team_id: Mapped[int] = mapped_column(ForeignKey("teams.id", ondelete="CASCADE"))
+    team: Mapped["Team"] = relationship(back_populates="payment")
 
 
 
