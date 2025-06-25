@@ -66,5 +66,18 @@ class ReservedUser(Reserved):
     # event: Event
 
 
+class Tournament(BaseModel):
+    id: int
+    type: str
+    title: str
+    date: datetime.datetime
+    max_team_places: int
+    min_team_count: int
+    min_team_players: int
+    max_team_players: int
+    active: bool
+    level: int
+    price: int
+
 
 

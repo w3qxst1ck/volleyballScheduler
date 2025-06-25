@@ -1,15 +1,21 @@
 import datetime
-from typing import List
+from typing import List, Any
+from collections.abc import Mapping
 
 import pytz
 from sqlalchemy import select, delete, update, text, and_
 from sqlalchemy.orm import joinedload, selectinload
+import asyncpg
 
 import settings
+from database.schemas import Tournament
+from logger import logger
 from database.database import async_engine, async_session_factory
 from database.tables import Base
 from database import schemas
 from database import tables
+
+Mapping.register(asyncpg.Record)
 
 
 class AsyncOrm:
@@ -478,6 +484,100 @@ class AsyncOrm:
             users = [schemas.User.model_validate(row, from_attributes=True) for row in rows]
             return users
 
+    @staticmethod
+    async def get_all_tournaments(days_ahead: int, session: Any, active: bool = True) -> list[Tournament]:
+        """Получение всех чемпионатов в выбранную данную"""
+        date_before = datetime.datetime.combine(datetime.datetime.now().date(), datetime.datetime.min.time())
+        date_after = date_before + datetime.timedelta(days=days_ahead)
 
+        try:
+            # Только активные
+            if active:
+                rows = await session.fetch(
+                    """
+                    SELECT * FROM tournaments
+                    WHERE active=true AND date > $1 AND date < $2
+                    """,
+                    date_before, date_after
+                )
+                tournaments: list[Tournament] = [
+                    Tournament.model_validate(row) for row in rows
+                ]
+
+                return tournaments
+            # Вместе с неактивными
+            else:
+                rows = await session.fetch(
+                    """
+                    SELECT * FROM tournaments
+                    WHERE date > $1 AND date < $2
+                    """,
+                    date_before, date_after
+                )
+                tournaments: list[Tournament] = [
+                    Tournament.model_validate(row) for row in rows
+                ]
+
+                return tournaments
+
+        except Exception as e:
+            logger.error(f"Ошибка при получении чемпионатов в период {date_before} - {date_after}: {e}")
+
+    @staticmethod
+    async def get_all_tournaments_for_date(date: datetime.date, session: Any, active: bool = True) -> list[Tournament]:
+        """Получение всех чемпионатов в выбранную данную"""
+        date_before = datetime.datetime.combine(date, datetime.datetime.min.time())
+        date_after = date_before + datetime.timedelta(days=1)
+
+        try:
+            # Только активные
+            if active:
+                rows = await session.fetch(
+                    """
+                    SELECT * FROM tournaments
+                    WHERE active=true AND date > $1 AND date < $2
+                    """,
+                    date_before, date_after
+                )
+                tournaments: list[Tournament] = [
+                    Tournament.model_validate(row) for row in rows
+                ]
+
+                return tournaments
+            # Вместе с неактивными
+            else:
+                rows = await session.fetch(
+                    """
+                    SELECT * FROM tournaments
+                    WHERE date > $1 AND date < $2
+                    """,
+                    date_before, date_after
+                )
+                tournaments: list[Tournament] = [
+                    Tournament.model_validate(row) for row in rows
+                ]
+
+                return tournaments
+
+        except Exception as e:
+            logger.error(f"Ошибка при получении чемпионатов в период {date_before} - {date_after}: {e}")
+
+    @staticmethod
+    async def get_tournament_by_id(tournament_id: int, session: Any) -> Tournament:
+        """Получение всех чемпионата по id"""
+        try:
+            row = await session.fetchrow(
+                """
+                SELECT * FROM tournaments
+                WHERE id=$1
+                """,
+                tournament_id
+            )
+            tournament: Tournament = Tournament.model_validate(row)
+
+            return tournament
+
+        except Exception as e:
+            logger.error(f"Ошибка при получении чемпионата {tournament_id}: {e}")
 
 

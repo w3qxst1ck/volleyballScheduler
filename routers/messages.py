@@ -1,6 +1,6 @@
 from typing import List
 
-from database.schemas import User, EventRel, Event, PaymentsEventsUsers, Payment, ReservedUser
+from database.schemas import User, EventRel, Event, PaymentsEventsUsers, Payment, ReservedUser, Tournament
 from routers.utils import convert_date, convert_time, convert_date_named_month
 from settings import settings
 import datetime
@@ -23,7 +23,29 @@ def user_profile_message(user: User) -> str:
     return message
 
 
-# актуальная карточка
+# карточка для чемпионатов
+def tournament_card_for_user_message(event: Tournament) -> str:
+    """Информация о чемпионате с его командами"""
+    date = convert_date_named_month(event.date)
+    time = convert_time(event.date)
+    weekday = settings.weekdays[datetime.datetime.weekday(event.date)]
+
+    message = f"📅 <b>{date}, {time} ({weekday})</b>\n"
+    message += f"🏁 <b>\"{event.type}\"</b>\n" \
+               f"  • {event.title}\n" \
+               f"  • <b>Минимальный уровень команды:</b> {event.level}\n" \
+               f"💰 <b>Стоимость участия для команды:</b> {event.price} руб.\n\n" \
+               f"👥 <b>Количество команд:</b> {1}/{event.max_team_places} (доступно {event.max_team_places - 1} мест)\n" \
+               f"👥 <b>Количество участников в команде:</b> {event.min_team_players}-{event.max_team_players}\n" \
+               f"⚠️ <b>Минимальное количество команд:</b> {event.min_team_count}\n" \
+               f"📍 <b>Адрес:</b> <a href='https://yandex.ru/navi/org/volleyball_city/9644230187/?ll=30.333934%2C59.993168&z=16'>{settings.address}</a>\n\n"
+
+    # TODO добавить уже имеющиеся команды с текущим уровнем
+
+    return message
+
+
+# актуальная карточка для всех событий кроме чемпионатов
 def event_card_for_user_message(event: EventRel, payment: Payment | None,
                                 reserved_users: List[ReservedUser]) -> str:
     """Информация о событии с его пользователями"""

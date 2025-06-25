@@ -5,7 +5,7 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from functools import wraps
 from typing import Callable, List
 
-from database.schemas import Event, User, EventRel, PaymentsEventsUsers, Payment, ReservedEvent
+from database.schemas import Event, User, EventRel, PaymentsEventsUsers, Payment, ReservedEvent, Tournament
 from routers.utils import convert_date, convert_time, get_weekday_from_date
 from settings import settings
 
@@ -35,22 +35,32 @@ def menu_users_keyboard() -> InlineKeyboardBuilder:
 
 
 @back_button("all-events")
-def events_keyboard(events: list[EventRel], user: User, reserved_events: List[ReservedEvent]) -> InlineKeyboardBuilder:
+def events_keyboard(events: list[EventRel | Tournament], user: User, reserved_events: List[ReservedEvent]) -> InlineKeyboardBuilder:
     """Клавиатура с мероприятиями для вывода пользователю"""
     keyboard = InlineKeyboardBuilder()
 
     for event in events:
-        time = event.date.time().strftime("%H:%M")
+        # для чемпионатов
+        if type(event) == Tournament:
+            # TODO учесть где уже зареганы или в резерв
+            time = event.date.time().strftime("%H:%M")
 
-        registered = ""
-        if user in event.users_registered:
-            registered = "✅️" + " "
+            keyboard.row(InlineKeyboardButton(text=f"{time} {event.type} 🏁",
+                                              callback_data=f"user-tournament_{event.id}"))
 
-        reserved = ""
-        if event.id in [reserve.event.id for reserve in reserved_events]:
-            reserved = "📝" + " "
+        elif type(event) == EventRel:
+            time = event.date.time().strftime("%H:%M")
 
-        keyboard.row(InlineKeyboardButton(text=f"{registered}{reserved}{time} {event.type}", callback_data=f"user-event_{event.id}"))
+            registered = ""
+            if user in event.users_registered:
+                registered = "✅️" + " "
+
+            reserved = ""
+            if event.id in [reserve.event.id for reserve in reserved_events]:
+                reserved = "📝" + " "
+
+            keyboard.row(InlineKeyboardButton(text=f"{registered}{reserved}{time} {event.type}",
+                                              callback_data=f"user-event_{event.id}"))
 
     keyboard.adjust(1)
     return keyboard
@@ -135,6 +145,16 @@ def my_event_card_keyboard(payment: Payment, reserved_event: bool = False) -> In
             )
 
     keyboard.row(InlineKeyboardButton(text=f"🔙 назад", callback_data=f"menu_my-events"))
+
+    return keyboard
+
+
+def tournament_card_keyboard(tournament_id: int, user_id: int, back_to: str) -> InlineKeyboardBuilder:
+    """Зарегистрироваться на чемпионат"""
+    keyboard = InlineKeyboardBuilder()
+
+    keyboard.row(InlineKeyboardButton(text=f"🔙 назад", callback_data=f"{back_to}"))
+    return keyboard
 
     return keyboard
 

@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Any
 
 from aiogram import Router, types, Bot
 from aiogram.exceptions import TelegramBadRequest
@@ -6,7 +7,8 @@ from aiogram.filters import Command, StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.types import FSInputFile
 
-from routers.middlewares import CheckPrivateMessageMiddleware
+from database.schemas import Tournament, Event
+from routers.middlewares import CheckPrivateMessageMiddleware, DatabaseMiddleware
 from routers import keyboards as kb, messages as ms
 from routers.fsm_states import RegisterUserFSM, UpdateUserFSM
 from database import schemas
@@ -17,6 +19,8 @@ import settings
 router = Router()
 router.message.middleware.register(CheckPrivateMessageMiddleware())
 router.callback_query.middleware.register(CheckPrivateMessageMiddleware())
+router.message.middleware.register(DatabaseMiddleware())
+router.callback_query.middleware.register(DatabaseMiddleware())
 
 
 # REGISTRATION
@@ -104,10 +108,19 @@ async def back_menu_handler(callback: types.CallbackQuery) -> None:
 
 # ALL EVENTS
 @router.callback_query(lambda callback: callback.data.split("_")[1] == "all-events")
-async def user_events_dates_handler(callback: types.CallbackQuery) -> None:
+async def user_events_dates_handler(callback: types.CallbackQuery, session: Any) -> None:
     """Вывод дат с мероприятиями мероприятий"""
-    events = await AsyncOrm.get_events(only_active=True, days_ahead=11) # берем мероприятия за ближайших 10 дней
-    events_dates = [event.date for event in events]
+    all_events: list = []
+
+    # берем мероприятия за ближайших 10 дней
+    events: list[Event] = await AsyncOrm.get_events(only_active=True, days_ahead=11)
+    # берем чемпионаты за ближайшие 10 дней
+    tournaments: list[Tournament] = await AsyncOrm.get_all_tournaments(days_ahead=11, session=session)
+
+    all_events.extend(events)
+    all_events.extend(tournaments)
+
+    events_dates = [event.date for event in all_events]
     unique_dates = utils.get_unique_dates(events_dates)
 
     msg = "Даты с событиями:"
@@ -118,16 +131,22 @@ async def user_events_dates_handler(callback: types.CallbackQuery) -> None:
 
 
 @router.callback_query(lambda callback: callback.data.split("_")[0] == "events-date")
-async def user_events_dates_handler(callback: types.CallbackQuery) -> None:
+async def user_events_dates_handler(callback: types.CallbackQuery, session: Any) -> None:
     """Вывод мероприятий в выбранную дату"""
     date_str = callback.data.split("_")[1]
     date = datetime.strptime(date_str, "%d.%m.%Y")
     converted_date = utils.convert_date_named_month(date)
     weekday = settings.settings.weekdays[datetime.weekday(date)]
 
+    all_events = []
+
     user = await AsyncOrm.get_user_by_tg_id(str(callback.from_user.id))
-    events = await AsyncOrm.get_events_for_date(date, only_active=True)
+    events = await AsyncOrm.get_events_for_date(date, only_active=True)     # события кроме чемпионатов
+    tournaments: list[Tournament] = await AsyncOrm.get_all_tournaments_for_date(date, session)    # события кроме чемпионатов
     reserved_events = await AsyncOrm.get_reserved_events_by_user_id(user.id)
+
+    all_events.extend(events)
+    all_events.extend(tournaments)
 
     msg = f"События на <b>{converted_date} ({weekday})</b>:\n\n" \
           f"События, на которые вы уже записаны, помечены '✅️'\n" \
@@ -135,10 +154,58 @@ async def user_events_dates_handler(callback: types.CallbackQuery) -> None:
 
     await callback.message.edit_text(
         msg,
-        reply_markup=kb.events_keyboard(events, user, reserved_events).as_markup()
+        reply_markup=kb.events_keyboard(all_events, user, reserved_events).as_markup()
     )
 
 
+# FOR TOURNAMENTS
+@router.callback_query(lambda callback: callback.data.split("_")[0] == "user-tournament")
+async def user_tournament_handler(callback: types.CallbackQuery, session: Any) -> None:
+    """Вывод карточки турнира для пользователя"""
+    tournament_id = int(callback.data.split("_")[1])
+    user_tg_id = str(callback.from_user.id)
+
+    user = await AsyncOrm.get_user_by_tg_id(user_tg_id)
+    await callback.message.edit_text("TOURNAMENT INFO")
+    tournament_with_teams = await AsyncOrm.get_tournament_by_id(tournament_id, session)
+
+    msg = ms.tournament_card_for_user_message(tournament_with_teams)
+
+    await callback.message.edit_text(
+        msg,
+        disable_web_page_preview=True,
+        reply_markup=kb.tournament_card_keyboard(
+            tournament_id,
+            user.id,
+            f"events-date_{utils.convert_date(tournament_with_teams.date)}",
+        ).as_markup()
+    )
+
+    #
+    # payment = await AsyncOrm.get_payment_by_event_and_user(event_id, user.id)
+    #
+    # # check full Event or not
+    # full_event: bool = len(event_with_users.users_registered) == event_with_users.places
+    #
+    # # получаем пользователь в резерве события
+    # reserved_users = await AsyncOrm.get_reserved_users_by_event_id(event_id)
+    #
+    # msg = ms.event_card_for_user_message(event_with_users, payment, reserved_users)
+    #
+    # await callback.message.edit_text(
+    #     msg,
+    #     disable_web_page_preview=True,
+    #     reply_markup=kb.event_card_keyboard(
+    #         event_id,
+    #         user.id,
+    #         payment,
+    #         f"events-date_{utils.convert_date(event_with_users.date)}",
+    #         full_event,
+    #     ).as_markup()
+    # )
+
+
+# FOR EVENTS
 @router.callback_query(lambda callback: callback.data.split("_")[0] == "user-event")
 async def user_event_handler(callback: types.CallbackQuery) -> None:
     """Вывод карточки мероприятия для пользователя"""
