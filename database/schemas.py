@@ -66,8 +66,7 @@ class ReservedUser(Reserved):
     # event: Event
 
 
-class Tournament(BaseModel):
-    id: int
+class TournamentAdd(BaseModel):
     type: str
     title: str
     date: datetime.datetime
@@ -78,6 +77,10 @@ class Tournament(BaseModel):
     active: bool
     level: int
     price: int
+
+
+class Tournament(TournamentAdd):
+    id: int
 
 
 

@@ -16,5 +16,17 @@ class AddEventFSM(StatesGroup):
     price = State()
 
 
+class AddTournamentFSM(StatesGroup):
+    title = State()
+    date = State()
+    time = State()
+    min_team_count = State()
+    max_team_places = State()
+    min_team_players = State()
+    max_team_players = State()
+    level = State()
+    price = State()
+
+
 class UpdateUserFSM(StatesGroup):
     name = State()

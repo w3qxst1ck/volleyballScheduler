@@ -10,7 +10,7 @@ from database.orm import AsyncOrm
 from routers.middlewares import CheckPrivateMessageMiddleware, CheckIsAdminMiddleware
 from routers.utils import write_excel_file
 from settings import settings
-from routers.fsm_states import AddEventFSM
+from routers.fsm_states import AddEventFSM, AddTournamentFSM
 from routers import keyboards as kb
 from routers import utils
 from routers import messages as ms
@@ -162,9 +162,6 @@ async def add_event_type_handler(message: types.Message, state: FSMContext) -> N
     type = message.text
     await state.update_data(type=type)
 
-    msg = await message.answer("Отправьте описание события, не указывая дату",
-                               reply_markup=kb.cancel_keyboard().as_markup())
-
     # удаление прошлого сообщения
     data = await state.get_data()
     try:
@@ -172,7 +169,19 @@ async def add_event_type_handler(message: types.Message, state: FSMContext) -> N
     except TelegramBadRequest:
         pass
 
+    # определение типа события (если первое слово "турнир" то перекидываем в другой FSM)
+    if type.split(" ")[0].lower() == "турнир":
+        await state.set_state(AddTournamentFSM.title)
+        await state.update_data(type=type)
+        msg = await message.answer("Отправьте описание турнира, не указывая дату",
+                                   reply_markup=kb.cancel_keyboard().as_markup())
+        await state.update_data(prev_mess=msg)
+        return
+
+    # обычное событие
     await state.set_state(AddEventFSM.title)
+    msg = await message.answer("Отправьте описание события, не указывая дату",
+                               reply_markup=kb.cancel_keyboard().as_markup())
     await state.update_data(prev_mess=msg)
 
 

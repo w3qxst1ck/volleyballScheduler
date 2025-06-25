@@ -110,7 +110,7 @@ def is_valid_places(places: str) -> bool:
     except ValueError:
         return False
 
-    if places < 0:
+    if places <= 0:
         return False
 
     return True

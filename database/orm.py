@@ -8,7 +8,7 @@ from sqlalchemy.orm import joinedload, selectinload
 import asyncpg
 
 import settings
-from database.schemas import Tournament
+from database.schemas import Tournament, TournamentAdd
 from logger import logger
 from database.database import async_engine, async_session_factory
 from database.tables import Base
@@ -485,6 +485,24 @@ class AsyncOrm:
             return users
 
     @staticmethod
+    async def create_tournament(tournament: TournamentAdd, session: Any) -> None:
+        """Создание турнира"""
+        try:
+            tournament_id = await session.fetchval(
+                """
+                INSERT INTO tournaments (type, title, date, max_team_places, min_team_count, min_team_players, max_team_players, active, level, price)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+                RETURNING id
+                """,
+                tournament.type, tournament.title, tournament.date, tournament.max_team_places, tournament.min_team_count,
+                tournament.min_team_players, tournament.max_team_players, tournament.active, tournament.level, tournament.price
+            )
+            logger.info(f"Добавлен турнир с id {tournament_id} {tournament.title} {tournament.date}")
+
+        except Exception as e:
+            logger.error(f"Ошибка при создании турнира: {e}")
+
+    @staticmethod
     async def get_all_tournaments(days_ahead: int, session: Any, active: bool = True) -> list[Tournament]:
         """Получение всех чемпионатов в выбранную данную"""
         date_before = datetime.datetime.combine(datetime.datetime.now().date(), datetime.datetime.min.time())
@@ -579,5 +597,6 @@ class AsyncOrm:
 
         except Exception as e:
             logger.error(f"Ошибка при получении чемпионата {tournament_id}: {e}")
+
 
 
