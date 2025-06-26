@@ -66,6 +66,13 @@ class ReservedUser(Reserved):
     # event: Event
 
 
+class Team(BaseModel):
+    id: int
+    title: str
+    level: int
+    # TODO add users
+
+
 class Tournament(BaseModel):
     id: int
     type: str
@@ -79,5 +86,9 @@ class Tournament(BaseModel):
     level: int
     price: int
 
+
+class TournamentTeams(Tournament):
+    teams: list[Team] | None = None
+    payments: list[int] | None = None
 
 

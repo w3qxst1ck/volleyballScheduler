@@ -153,8 +153,8 @@ def tournament_card_keyboard(tournament_id: int, user_id: int, back_to: str) -> 
     """Зарегистрироваться на чемпионат"""
     keyboard = InlineKeyboardBuilder()
 
+    keyboard.row(InlineKeyboardButton(text=f"Зарегистрировать команду", callback_data=f"register_new_team"))
     keyboard.row(InlineKeyboardButton(text=f"🔙 назад", callback_data=f"{back_to}"))
-    return keyboard
 
     return keyboard
 

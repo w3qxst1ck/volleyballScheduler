@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Any
 
-from aiogram import Router, types, Bot
+from aiogram import Router, types, Bot, F
 from aiogram.exceptions import TelegramBadRequest
 from aiogram.filters import Command, StateFilter
 from aiogram.fsm.context import FSMContext
@@ -166,10 +166,10 @@ async def user_tournament_handler(callback: types.CallbackQuery, session: Any) -
     user_tg_id = str(callback.from_user.id)
 
     user = await AsyncOrm.get_user_by_tg_id(user_tg_id)
-    await callback.message.edit_text("TOURNAMENT INFO")
-    tournament_with_teams = await AsyncOrm.get_tournament_by_id(tournament_id, session)
+    tournament = await AsyncOrm.get_tournament_by_id(tournament_id, session)
+    teams = await AsyncOrm.get_teams_for_tournament(tournament_id, session)
 
-    msg = ms.tournament_card_for_user_message(tournament_with_teams)
+    msg = ms.tournament_card_for_user_message(tournament)
 
     await callback.message.edit_text(
         msg,
@@ -177,7 +177,7 @@ async def user_tournament_handler(callback: types.CallbackQuery, session: Any) -
         reply_markup=kb.tournament_card_keyboard(
             tournament_id,
             user.id,
-            f"events-date_{utils.convert_date(tournament_with_teams.date)}",
+            f"events-date_{utils.convert_date(tournament.date)}",
         ).as_markup()
     )
 
@@ -203,6 +203,13 @@ async def user_tournament_handler(callback: types.CallbackQuery, session: Any) -
     #         full_event,
     #     ).as_markup()
     # )
+
+
+# REG NEW TEAM
+@router.callback_query(F.data == "register_new_team")
+async def register_new_team(callback: types.CallbackQuery) -> None:
+    """Регистрация новой команды"""
+    await callback.message.edit_text("Reg new team here")
 
 
 # FOR EVENTS

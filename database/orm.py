@@ -8,7 +8,7 @@ from sqlalchemy.orm import joinedload, selectinload
 import asyncpg
 
 import settings
-from database.schemas import Tournament
+from database.schemas import Tournament, Team
 from logger import logger
 from database.database import async_engine, async_session_factory
 from database.tables import Base
@@ -580,4 +580,13 @@ class AsyncOrm:
         except Exception as e:
             logger.error(f"Ошибка при получении чемпионата {tournament_id}: {e}")
 
-
+    @staticmethod
+    async def get_teams_for_tournament(tournament_id: int, session: Any) -> list[Team]:
+        """Получение команд в чемпионате"""
+        try:
+            rows = await session.fetch(
+                """
+                """
+            )
+        except Exception as e:
+            logger.error(f"Ошибка при получении команд для чемпионата {tournament_id}: {e}")
