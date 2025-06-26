@@ -73,8 +73,7 @@ class Team(BaseModel):
     # TODO add users
 
 
-class Tournament(BaseModel):
-    id: int
+class TournamentAdd(BaseModel):
     type: str
     title: str
     date: datetime.datetime
@@ -87,8 +86,13 @@ class Tournament(BaseModel):
     price: int
 
 
+class Tournament(TournamentAdd):
+    id: int
+
+
 class TournamentTeams(Tournament):
     teams: list[Team] | None = None
     payments: list[int] | None = None
+
 
 
