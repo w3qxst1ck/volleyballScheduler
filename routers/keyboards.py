@@ -5,7 +5,8 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from functools import wraps
 from typing import Callable, List
 
-from database.schemas import Event, User, EventRel, PaymentsEventsUsers, Payment, ReservedEvent, Tournament
+from database.schemas import Event, User, EventRel, PaymentsEventsUsers, Payment, ReservedEvent, Tournament, Team, \
+    TeamUsers
 from routers.utils import convert_date, convert_time, get_weekday_from_date
 from settings import settings
 
@@ -45,7 +46,7 @@ def events_keyboard(events: list[EventRel | Tournament], user: User, reserved_ev
             # TODO учесть где уже зареганы или в резерв
             time = event.date.time().strftime("%H:%M")
 
-            keyboard.row(InlineKeyboardButton(text=f"{time} {event.type} 🏁",
+            keyboard.row(InlineKeyboardButton(text=f"{time} 🏁 {event.type}",
                                               callback_data=f"user-tournament_{event.id}"))
 
         elif type(event) == EventRel:
@@ -149,11 +150,18 @@ def my_event_card_keyboard(payment: Payment, reserved_event: bool = False) -> In
     return keyboard
 
 
-def tournament_card_keyboard(tournament_id: int, user_id: int, back_to: str) -> InlineKeyboardBuilder:
+def tournament_card_keyboard(tournament_id: int, user_id: int, back_to: str, teams: list[TeamUsers]) -> InlineKeyboardBuilder:
     """Зарегистрироваться на чемпионат"""
     keyboard = InlineKeyboardBuilder()
 
-    keyboard.row(InlineKeyboardButton(text=f"Зарегистрировать команду", callback_data=f"register_new_team"))
+    # Сортируем по названию команды
+    ordered_teams = [team for team in sorted(teams, key=lambda x: x.title)]
+
+    if ordered_teams:
+        for team in ordered_teams:
+            keyboard.row(InlineKeyboardButton(text=f"{team.title}", callback_data=f"register-in-team_{team.team_id}"))
+
+    keyboard.row(InlineKeyboardButton(text=f"✍️ Зарегистрировать команду", callback_data=f"register-new-team_{tournament_id}"))
     keyboard.row(InlineKeyboardButton(text=f"🔙 назад", callback_data=f"{back_to}"))
 
     return keyboard
@@ -355,4 +363,11 @@ def cancel_keyboard() -> InlineKeyboardBuilder:
     """Клавиатура для отмены создания пользователя админом"""
     keyboard = InlineKeyboardBuilder()
     keyboard.row(InlineKeyboardButton(text="❌ Отмена", callback_data="button_cancel"))
+    return keyboard
+
+
+def back_keyboard(back_to: str) -> InlineKeyboardBuilder:
+    """Клавиатура назад"""
+    keyboard = InlineKeyboardBuilder()
+    keyboard.row(InlineKeyboardButton(text="🔙 назад", callback_data=f"{back_to}"))
     return keyboard

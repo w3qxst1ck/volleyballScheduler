@@ -70,7 +70,15 @@ class Team(BaseModel):
     id: int
     title: str
     level: int
+    tournament_id: int
     # TODO add users
+
+
+class TeamUsers(BaseModel):
+    team_id: int
+    title: str
+    team_level: int
+    users: list[User]
 
 
 class TournamentAdd(BaseModel):

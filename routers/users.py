@@ -7,7 +7,7 @@ from aiogram.filters import Command, StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.types import FSInputFile
 
-from database.schemas import Tournament, Event
+from database.schemas import Tournament, Event, TeamUsers
 from routers.middlewares import CheckPrivateMessageMiddleware, DatabaseMiddleware
 from routers import keyboards as kb, messages as ms
 from routers.fsm_states import RegisterUserFSM, UpdateUserFSM
@@ -167,9 +167,17 @@ async def user_tournament_handler(callback: types.CallbackQuery, session: Any) -
 
     user = await AsyncOrm.get_user_by_tg_id(user_tg_id)
     tournament = await AsyncOrm.get_tournament_by_id(tournament_id, session)
-    teams = await AsyncOrm.get_teams_for_tournament(tournament_id, session)
 
-    msg = ms.tournament_card_for_user_message(tournament)
+    # Проверка есть ли у игрока уровень, для участия в турнире
+    if not user.level:
+        keyboard = kb.back_keyboard(f"events-date_{utils.convert_date(tournament.date)}")
+        await callback.message.edit_text("Вы не можете участвовать в турнире, пока у вас не определен уровень",
+                                         reply_markup=keyboard.as_markup())
+        return
+
+    teams_users: list[TeamUsers] = await AsyncOrm.get_teams_with_users(tournament_id, session)
+
+    msg = ms.tournament_card_for_user_message(tournament, teams_users)
 
     await callback.message.edit_text(
         msg,
@@ -178,6 +186,7 @@ async def user_tournament_handler(callback: types.CallbackQuery, session: Any) -
             tournament_id,
             user.id,
             f"events-date_{utils.convert_date(tournament.date)}",
+            teams_users
         ).as_markup()
     )
 
@@ -206,10 +215,17 @@ async def user_tournament_handler(callback: types.CallbackQuery, session: Any) -
 
 
 # REG NEW TEAM
-@router.callback_query(F.data == "register_new_team")
+@router.callback_query(F.data == "register-new-team")
 async def register_new_team(callback: types.CallbackQuery) -> None:
     """Регистрация новой команды"""
     await callback.message.edit_text("Reg new team here")
+
+
+# REG IN TEAM
+@router.callback_query(F.data.split("_")[0] == "register-in-team")
+async def register_in_team(callback: types.CallbackQuery) -> None:
+    """Запись в существующую команду"""
+    await callback.message.edit_text("Запись в существующую команду")
 
 
 # FOR EVENTS

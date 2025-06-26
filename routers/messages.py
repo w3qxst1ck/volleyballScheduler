@@ -1,6 +1,7 @@
 from typing import List
 
-from database.schemas import User, EventRel, Event, PaymentsEventsUsers, Payment, ReservedUser, Tournament
+from database.schemas import User, EventRel, Event, PaymentsEventsUsers, Payment, ReservedUser, Tournament, Team, \
+    TeamUsers
 from routers.utils import convert_date, convert_time, convert_date_named_month
 from settings import settings
 import datetime
@@ -24,11 +25,14 @@ def user_profile_message(user: User) -> str:
 
 
 # карточка для чемпионатов
-def tournament_card_for_user_message(event: Tournament) -> str:
+def tournament_card_for_user_message(event: Tournament, teams_users: list[TeamUsers]) -> str:
     """Информация о чемпионате с его командами"""
     date = convert_date_named_month(event.date)
     time = convert_time(event.date)
     weekday = settings.weekdays[datetime.datetime.weekday(event.date)]
+
+    # формируем и сортируем команды
+    ordered_teams = [team for team in sorted(teams_users, key=lambda x: x.title)]
 
     message = f"📅 <b>{date}, {time} ({weekday})</b>\n"
     message += f"🏁 <b>\"{event.type}\"</b>\n" \
@@ -40,7 +44,15 @@ def tournament_card_for_user_message(event: Tournament) -> str:
                f"⚠️ <b>Минимальное количество команд:</b> {event.min_team_count}\n" \
                f"📍 <b>Адрес:</b> <a href='https://yandex.ru/navi/org/volleyball_city/9644230187/?ll=30.333934%2C59.993168&z=16'>{settings.address}</a>\n\n"
 
-    # TODO добавить уже имеющиеся команды с текущим уровнем
+    if ordered_teams:
+        used_teams = []
+        count = 1
+        message += "<b>Зарегистрированные команды:</b>\n"
+
+        for team in ordered_teams:
+            message += f"{count}. \"{team.title}\" уровень - {team.team_level}\n"
+            used_teams.append(team.title)
+            count += 1
 
     return message
 
