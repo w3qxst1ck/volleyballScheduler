@@ -17,6 +17,7 @@ class AddEventFSM(StatesGroup):
 
 
 class AddTournamentFSM(StatesGroup):
+    type = State()
     title = State()
     date = State()
     time = State()

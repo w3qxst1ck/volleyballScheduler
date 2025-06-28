@@ -352,6 +352,19 @@ def levels_keyboards() -> InlineKeyboardBuilder:
     return keyboard
 
 
+def tournament_levels_keyboards() -> InlineKeyboardBuilder:
+    """Клавиатура уровня турниров"""
+    keyboard = InlineKeyboardBuilder()
+
+    for k, v in settings.tournament_points.items():
+        keyboard.row(InlineKeyboardButton(text=f"{v[0]}", callback_data=f"admin-add-tournament-level_{k}"))
+    keyboard.adjust(2)
+
+    keyboard.row(InlineKeyboardButton(text="❌ Отмена", callback_data="button_cancel"))
+
+    return keyboard
+
+
 def cancel_update_profile_keyboard() -> InlineKeyboardBuilder:
     """Клавиатура для отмены редактирования профиля"""
     keyboard = InlineKeyboardBuilder()

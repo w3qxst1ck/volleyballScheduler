@@ -11,6 +11,12 @@ LEVELS = {
     7: "🏆 Хард",
 }
 
+TOURNAMENT_POINTS = {
+    4: ("🥉 Новичок+/Лайт", 16),
+    5: ("🥈 Лайт/Лайт+", 22),
+    6: ("🥇 Лайт+/Лайт++", 32),
+}
+
 WEEKDAYS = {
     0: "Пн",
     1: "Вт",
@@ -43,6 +49,7 @@ class Settings(BaseSettings):
     main_admin_tg_id: str
     levels: dict = LEVELS
     weekdays: dict = WEEKDAYS
+    tournament_points: dict = TOURNAMENT_POINTS
     expire_event_days: int = 14
     admin_phone: str
     support_contact: str

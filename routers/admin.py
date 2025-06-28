@@ -169,16 +169,6 @@ async def add_event_type_handler(message: types.Message, state: FSMContext) -> N
     except TelegramBadRequest:
         pass
 
-    # определение типа события (если первое слово "турнир" то перекидываем в другой FSM)
-    if type.split(" ")[0].lower() == "турнир":
-        await state.set_state(AddTournamentFSM.title)
-        await state.update_data(type=type)
-        msg = await message.answer("Отправьте описание турнира, не указывая дату",
-                                   reply_markup=kb.cancel_keyboard().as_markup())
-        await state.update_data(prev_mess=msg)
-        return
-
-    # обычное событие
     await state.set_state(AddEventFSM.title)
     msg = await message.answer("Отправьте описание события, не указывая дату",
                                reply_markup=kb.cancel_keyboard().as_markup())
