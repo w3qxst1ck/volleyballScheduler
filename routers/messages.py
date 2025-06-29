@@ -39,7 +39,7 @@ def tournament_card_for_user_message(event: Tournament, teams_users: list[TeamUs
                f"  • {event.title}\n" \
                f"  • <b>Минимальный уровень команды:</b> {event.level}\n" \
                f"💰 <b>Стоимость участия для команды:</b> {event.price} руб.\n\n" \
-               f"👥 <b>Количество команд:</b> {1}/{event.max_team_places} (доступно {event.max_team_places - 1} мест)\n" \
+               f"👥 <b>Количество команд:</b> {1}/{event.max_team_count} (доступно {event.max_team_count - 1} мест)\n" \
                f"👥 <b>Количество участников в команде:</b> {event.min_team_players}-{event.max_team_players}\n" \
                f"⚠️ <b>Минимальное количество команд:</b> {event.min_team_count}\n" \
                f"📍 <b>Адрес:</b> <a href='https://yandex.ru/navi/org/volleyball_city/9644230187/?ll=30.333934%2C59.993168&z=16'>{settings.address}</a>\n\n"

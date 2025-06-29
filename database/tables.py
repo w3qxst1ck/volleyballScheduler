@@ -129,7 +129,7 @@ class Tournament(Base):
     type: Mapped[str]
     title: Mapped[str] = mapped_column(index=True)
     date: Mapped[datetime.datetime] = mapped_column(server_default=text("TIMEZONE('utc', now())"))
-    max_team_places: Mapped[int]
+    max_team_count: Mapped[int]
     min_team_count: Mapped[int]
     min_team_players: Mapped[int]
     max_team_players: Mapped[int]
@@ -154,6 +154,7 @@ class Team(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     title: Mapped[str] = mapped_column(index=True)
     level: Mapped[int] = mapped_column(nullable=True)
+    team_leader_id: Mapped[int] = mapped_column(nullable=False)
 
     users: Mapped[list["User"]] = relationship(
         back_populates="teams",

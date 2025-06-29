@@ -175,6 +175,8 @@ async def user_tournament_handler(callback: types.CallbackQuery, session: Any) -
                                          reply_markup=keyboard.as_markup())
         return
 
+    # TODO проверку на пол (м/ж) у пользователя
+
     teams_users: list[TeamUsers] = await AsyncOrm.get_teams_with_users(tournament_id, session)
 
     msg = ms.tournament_card_for_user_message(tournament, teams_users)
@@ -223,8 +225,13 @@ async def register_new_team(callback: types.CallbackQuery) -> None:
 
 # REG IN TEAM
 @router.callback_query(F.data.split("_")[0] == "register-in-team")
-async def register_in_team(callback: types.CallbackQuery) -> None:
+async def register_in_team(callback: types.CallbackQuery, session: Any) -> None:
     """Запись в существующую команду"""
+    team_id = int(callback.data.split("_")[1])
+
+    team = await AsyncOrm.get_team(team_id, session)
+    print(team)
+
     await callback.message.edit_text("Запись в существующую команду")
 
 

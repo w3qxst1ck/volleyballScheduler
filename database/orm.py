@@ -490,11 +490,11 @@ class AsyncOrm:
         try:
             tournament_id = await session.fetchval(
                 """
-                INSERT INTO tournaments (type, title, date, max_team_places, min_team_count, min_team_players, max_team_players, active, level, price)
+                INSERT INTO tournaments (type, title, date, max_team_count, min_team_count, min_team_players, max_team_players, active, level, price)
                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
                 RETURNING id
                 """,
-                tournament.type, tournament.title, tournament.date, tournament.max_team_places, tournament.min_team_count,
+                tournament.type, tournament.title, tournament.date, tournament.max_team_count, tournament.min_team_count,
                 tournament.min_team_players, tournament.max_team_players, tournament.active, tournament.level, tournament.price
             )
             logger.info(f"Добавлен турнир с id {tournament_id} {tournament.title} {tournament.date}")
@@ -599,32 +599,14 @@ class AsyncOrm:
             logger.error(f"Ошибка при получении чемпионата {tournament_id}: {e}")
 
     @staticmethod
-    async def get_teams_for_tournament(tournament_id: int, session: Any) -> list[Team]:
-        """Получение команд в чемпионате"""
-        try:
-            rows = await session.fetch(
-                """
-                SELECT * FROM teams
-                WHERE tournament_id = $1
-                """,
-                tournament_id
-            )
-
-            teams: list = [Team.model_validate(row) for row in rows]
-
-            return teams
-
-        except Exception as e:
-            logger.error(f"Ошибка при получении команд для чемпионата {tournament_id}: {e}")
-
-    @staticmethod
     async def get_teams_with_users(tournament_id: int, session: Any) -> list[TeamUsers]:
         """Получение команд вместе с пользователями"""
         try:
             rows = await session.fetch(
                 """
-                SELECT t.id AS team_id, t.title AS title, t.level AS team_level, u.id AS user_id, 
-                u.tg_id AS tg_id, u.username AS username, u.firstname AS firstname, u.lastname AS lastname, u.level AS user_level 
+                SELECT t.id AS team_id, t.title AS title, t.level AS team_level, t.team_leader_id as team_leader_id, 
+                u.id AS user_id, u.tg_id AS tg_id, u.username AS username, u.firstname AS firstname, 
+                u.lastname AS lastname, u.level AS user_level 
                 FROM teams AS t
                 JOIN teams_users AS tu ON t.id = tu.team_id
                 JOIN users AS u ON tu.user_id=u.id
@@ -660,6 +642,7 @@ class AsyncOrm:
                         team_id=row["team_id"],
                         title=row["title"],
                         team_level=row["team_level"],
+                        team_leader_id=row["team_leader_id"],
                         users=teams_users[row["title"]]
                     ))
                     used_teams.append(row["title"])
@@ -668,3 +651,57 @@ class AsyncOrm:
 
         except Exception as e:
             logger.error(f"Ошибка при получении команд с игроками для чемпионата {tournament_id}: {e}")
+
+    @staticmethod
+    async def get_team(team_id: int, session: Any) -> TeamUsers:
+        """Получает команду с пользователями и капитаном"""
+        try:
+            rows = await session.fetch(
+                """
+                SELECT t.id AS team_id, t.title AS title, t.level AS team_level, t.team_leader_id as team_leader_id, 
+                u.id AS user_id, u.tg_id AS tg_id, u.username AS username, u.firstname AS firstname, 
+                u.lastname AS lastname, u.level AS user_level 
+                FROM teams AS t
+                JOIN teams_users AS tu ON t.id = tu.team_id
+                JOIN users AS u ON tu.user_id=u.id
+                WHERE t.id = $1
+                """,
+                team_id
+            )
+            result = []
+
+            # Разбиваем пользователей по командам
+            teams_users = {}
+            for row in rows:
+                user = User(
+                    id=row["user_id"],
+                    tg_id=row["tg_id"],
+                    username=row["username"],
+                    firstname=row["firstname"],
+                    lastname=row["lastname"],
+                    level=row["user_level"]
+                )
+                if row["title"] in teams_users.keys():
+                    teams_users[row["title"]].append(user)
+                else:
+                    teams_users[row["title"]] = [user]
+
+            # Формируем модель TeamUsers
+            used_teams = []
+            for row in rows:
+                if row["title"] in used_teams:
+                    continue
+                else:
+                    result.append(TeamUsers(
+                        team_id=row["team_id"],
+                        title=row["title"],
+                        team_level=row["team_level"],
+                        team_leader_id=row["team_leader_id"],
+                        users=teams_users[row["title"]]
+                    ))
+                    used_teams.append(row["title"])
+
+            return result[0]
+
+        except Exception as e:
+            logger.error(f"Ошибка при получении команды с игроками {team_id}: {e}")

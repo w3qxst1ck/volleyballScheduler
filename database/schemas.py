@@ -70,6 +70,7 @@ class Team(BaseModel):
     id: int
     title: str
     level: int
+    team_leader_id: int
     tournament_id: int
     # TODO add users
 
@@ -78,6 +79,7 @@ class TeamUsers(BaseModel):
     team_id: int
     title: str
     team_level: int
+    team_leader_id: int
     users: list[User]
 
 
@@ -85,7 +87,7 @@ class TournamentAdd(BaseModel):
     type: str
     title: str
     date: datetime.datetime
-    max_team_places: int
+    max_team_count: int
     min_team_count: int
     min_team_players: int
     max_team_players: int
@@ -96,11 +98,6 @@ class TournamentAdd(BaseModel):
 
 class Tournament(TournamentAdd):
     id: int
-
-
-class TournamentTeams(Tournament):
-    teams: list[Team] | None = None
-    payments: list[int] | None = None
 
 
 
