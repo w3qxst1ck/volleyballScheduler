@@ -3,6 +3,7 @@ from typing import Any
 
 from aiogram import Router, types
 from aiogram.exceptions import TelegramBadRequest
+from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 
 from database import schemas
@@ -23,6 +24,34 @@ router.callback_query.middleware.register(DatabaseMiddleware())
 
 
 # ADD TOURNAMENT
+@router.message(Command("add_tournament"))
+async def add_tournament_start_handler(message: types.Message, state: FSMContext) -> None:
+    """Начало FSM"""
+    msg = await message.answer("Отправьте тип турнира (например турнир для новичков)", reply_markup=kb.cancel_keyboard().as_markup())
+
+    await state.set_state(AddTournamentFSM.type)
+    await state.update_data(prev_mess=msg)
+
+
+@router.message(AddTournamentFSM.type)
+async def add_tournament_get_type_handler(message: types.Message, state: FSMContext) -> None:
+    """Запись type, запрос title"""
+    type = message.text
+    await state.update_data(type=type)
+
+    # изменение прошлого сообщения
+    data = await state.get_data()
+    try:
+        await data["prev_mess"].edit_text(data["prev_mess"].text)
+    except TelegramBadRequest:
+        pass
+
+    await state.set_state(AddTournamentFSM.title)
+    msg = await message.answer("Отправьте описание турнира, не указывая дату",
+                               reply_markup=kb.cancel_keyboard().as_markup())
+    await state.update_data(prev_mess=msg)
+
+
 @router.message(AddTournamentFSM.title)
 async def add_tournament_title_handler(message: types.Message, state: FSMContext) -> None:
     """Сохранение title, выбор date"""
@@ -228,11 +257,11 @@ async def add_tournament_max_team_players_handler(message: types.Message, state:
     await state.set_state(AddTournamentFSM.level)
 
     msg = await message.answer("Выберите уровень турнира",
-                               reply_markup=kb.levels_keyboards().as_markup())
+                               reply_markup=kb.tournament_levels_keyboards().as_markup())
     await state.update_data(prev_mess=msg)
 
 
-@router.callback_query(AddTournamentFSM.level, lambda callback: callback.data.split("_")[0] == "admin-add-event-level")
+@router.callback_query(AddTournamentFSM.level, lambda callback: callback.data.split("_")[0] == "admin-add-tournament-level")
 async def add_tournament_date_handler(callback: types.CallbackQuery, state: FSMContext) -> None:
     """Сохранение level, выбор price"""
     level = int(callback.data.split("_")[1])
