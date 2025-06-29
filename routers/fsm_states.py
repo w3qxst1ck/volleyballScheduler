@@ -22,7 +22,7 @@ class AddTournamentFSM(StatesGroup):
     date = State()
     time = State()
     min_team_count = State()
-    max_team_places = State()
+    max_team_count = State()
     min_team_players = State()
     max_team_players = State()
     level = State()

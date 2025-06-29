@@ -137,7 +137,7 @@ async def add_tournament_date_handler(message: types.Message, state: FSMContext)
 
 @router.message(AddTournamentFSM.min_team_count)
 async def add_tournament_min_team_count_handler(message: types.Message, state: FSMContext) -> None:
-    """Сохранение min_team_count, выбор max_team_places"""
+    """Сохранение min_team_count, выбор max_team_count"""
     min_team_count = message.text
     data = await state.get_data()
 
@@ -158,7 +158,7 @@ async def add_tournament_min_team_count_handler(message: types.Message, state: F
     # если количество мест правильное
     await state.update_data(min_team_count=int(min_team_count))
 
-    await state.set_state(AddTournamentFSM.max_team_places)
+    await state.set_state(AddTournamentFSM.max_team_count)
 
     msg = await message.answer(
         "Введите <b>максимальное</b> количество команд",
@@ -167,10 +167,10 @@ async def add_tournament_min_team_count_handler(message: types.Message, state: F
     await state.update_data(prev_mess=msg)
 
 
-@router.message(AddTournamentFSM.max_team_places)
-async def add_tournament_max_team_places_handler(message: types.Message, state: FSMContext) -> None:
-    """Сохранение max_team_places, выбор min_team_players"""
-    max_team_places = message.text
+@router.message(AddTournamentFSM.max_team_count)
+async def add_tournament_max_team_count_handler(message: types.Message, state: FSMContext) -> None:
+    """Сохранение max_team_count, выбор min_team_players"""
+    max_team_count = message.text
     data = await state.get_data()
 
     # изменение предыдущего сообщения
@@ -180,7 +180,7 @@ async def add_tournament_max_team_places_handler(message: types.Message, state: 
         pass
 
     # неправильное количество мест
-    if not utils.is_valid_places(max_team_places):
+    if not utils.is_valid_places(max_team_count):
         msg = await message.answer("Введено некорректное число\n\n"
                                    "Необходимо указать <b>число</b> без букв, знаков препинания и других символов "
                                    "(например 8, 16 или 24)", reply_markup=kb.cancel_keyboard().as_markup())
@@ -188,7 +188,7 @@ async def add_tournament_max_team_places_handler(message: types.Message, state: 
         return
 
     # если количество мест правильное
-    await state.update_data(max_team_places=int(max_team_places))
+    await state.update_data(max_team_count=int(max_team_count))
 
     await state.set_state(AddTournamentFSM.min_team_players)
 
@@ -298,7 +298,7 @@ async def save_tournament_handler(message: types.Message, state: FSMContext, ses
         type=data["type"],
         title=data["title"],
         date=date_time,
-        max_team_places=data["max_team_places"],
+        max_team_count=data["max_team_count"],
         min_team_count=data["min_team_count"],
         min_team_players=data["min_team_players"],
         max_team_players=data["max_team_players"],
