@@ -27,6 +27,7 @@ class User(Base):
     firstname: Mapped[str]
     lastname: Mapped[str]
     level: Mapped[int] = mapped_column(nullable=True)
+    gender: Mapped[str] = mapped_column(nullable=True, default=None)
 
     events: Mapped[list["Event"]] = relationship(
         back_populates="users_registered",

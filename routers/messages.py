@@ -18,8 +18,10 @@ def main_menu_message() -> str:
 
 def user_profile_message(user: User) -> str:
     """Сообщение с профилем пользователя"""
+    gender_ru = "Мужской" if user.gender == "male" else "Женский"
+    user_gender = f"👥 Пол: " + gender_ru if user.gender else f"👥 Пол: не указан"
     user_lvl = f"🔝 Уровень: " + settings.levels[user.level] if user.level else f"🔝 Уровень: еще не определен"
-    message = f"<b>Профиль</b>\n\n👤 {user.firstname} {user.lastname}\n{user_lvl}"
+    message = f"<b>Профиль</b>\n\n👤 {user.firstname} {user.lastname}\n{user_gender}\n{user_lvl}"
 
     return message
 

@@ -105,12 +105,39 @@ def dates_keyboard(dates: dict[str:int]) -> InlineKeyboardBuilder:
 
 
 @back_button("user-menu")
-def user_profile_keyboard() -> InlineKeyboardBuilder:
+def user_profile_keyboard(has_gender: bool) -> InlineKeyboardBuilder:
     """Профиль пользователя"""
     keyboard = InlineKeyboardBuilder()
     keyboard.row(
         InlineKeyboardButton(text="📝 Изменить имя", callback_data=f"update_user_profile")
     )
+    if not has_gender:
+        keyboard.row(
+            InlineKeyboardButton(text="👥 Указать пол", callback_data=f"choose_gender")
+        )
+    return keyboard
+
+
+def choose_gender_keyboard() -> InlineKeyboardBuilder:
+    """Клавиатура выбора пола"""
+    keyboard = InlineKeyboardBuilder()
+
+    keyboard.row(InlineKeyboardButton(text="Мужской", callback_data=f"update_gender|male"))
+    keyboard.row(InlineKeyboardButton(text="Женский", callback_data=f"update_gender|female"))
+    keyboard.row(InlineKeyboardButton(text=f"🔙 назад", callback_data=f"menu_profile"))
+
+    return keyboard
+
+
+def confirm_choose_gender_keyboard(gender: str) -> InlineKeyboardBuilder:
+    """Клавиатура подтверждения выбора пола"""
+    keyboard = InlineKeyboardBuilder()
+
+    keyboard.row(
+        InlineKeyboardButton(text="Да", callback_data=f"confirm_update_gender|{gender}"),
+        InlineKeyboardButton(text="Нет", callback_data=f"choose_gender")
+    )
+
     return keyboard
 
 
@@ -411,6 +438,14 @@ def team_card_keyboard(tournament_id: int, team_id: int, user_already_in_team: b
 
     keyboard.row(InlineKeyboardButton(text="🔙 назад", callback_data=f"user-tournament_{tournament_id}"))
 
+    return keyboard
+
+
+def back_and_choose_gender_keyboard(back_to: str) -> InlineKeyboardBuilder:
+    """Клавиатура назад если пол еще не указан"""
+    keyboard = InlineKeyboardBuilder()
+    keyboard.row(InlineKeyboardButton(text="👤 Мой профиль", callback_data=f"menu_profile"))
+    keyboard.row(InlineKeyboardButton(text="🔙 назад", callback_data=f"{back_to}"))
     return keyboard
 
 

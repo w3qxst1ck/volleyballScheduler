@@ -9,6 +9,7 @@ class UserAdd(BaseModel):
     firstname: str
     lastname: str
     level: int | None = None
+    gender: str | None = None
 
 
 class User(UserAdd):

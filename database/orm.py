@@ -736,3 +736,21 @@ class AsyncOrm:
         except Exception as e:
             logger.error(f"Ошибка при создании команды {title} турнира {tournament_id}: {e}")
             raise
+
+    @staticmethod
+    async def update_user_gender(gender: str, tg_id: str, session: Any) -> None:
+        """Обновление пола в БД"""
+        try:
+            await session.execute(
+                """
+                UPDATE users
+                SET gender = $1
+                WHERE tg_id = $2
+                """,
+                gender, tg_id
+            )
+            logger.info(f"Пользователь tg_id {tg_id} указал пол {gender}")
+
+        except Exception as e:
+            logger.error(f"Ошибка при обновлении пола у пользователя {tg_id}: {e}")
+            raise

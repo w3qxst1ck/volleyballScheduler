@@ -8,6 +8,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import FSInputFile
 
 from database.schemas import Tournament, Event, TeamUsers, TournamentTeams
+from logger import logger
 from routers.middlewares import CheckPrivateMessageMiddleware, DatabaseMiddleware
 from routers import keyboards as kb, messages as ms
 from routers.fsm_states import RegisterUserFSM, UpdateUserFSM, RegNewTeamFSM
@@ -182,7 +183,13 @@ async def user_tournament_handler(callback: types.CallbackQuery, session: Any, s
                                          reply_markup=keyboard.as_markup())
         return
 
-    # TODO проверку на пол (м/ж) у пользователя
+    # Проверка на пол
+    if not user.gender:
+        keyboard = kb.back_and_choose_gender_keyboard(f"events-date_{utils.convert_date(tournament.date)}")
+        await callback.message.edit_text("Вы не можете участвовать в турнире, пока у вас не указан пол.\n"
+                                         "Укажите пол в разделе \"👤 Мой профиль\".",
+                                         reply_markup=keyboard.as_markup())
+        return
 
     teams_users: list[TeamUsers] = await AsyncOrm.get_teams_with_users(tournament_id, session)
 
@@ -612,7 +619,8 @@ async def main_menu_handler(callback: types.CallbackQuery) -> None:
     user = await AsyncOrm.get_user_by_tg_id(str(callback.from_user.id))
 
     message = ms.user_profile_message(user)
-    await callback.message.edit_text(message, reply_markup=kb.user_profile_keyboard().as_markup())
+    has_gender = user.gender is not None
+    await callback.message.edit_text(message, reply_markup=kb.user_profile_keyboard(has_gender).as_markup())
 
 
 @router.callback_query(lambda callback: callback.data == "update_user_profile")
@@ -655,7 +663,8 @@ async def update_user_handler(message: types.Message, state: FSMContext) -> None
         await message.answer("Данные успешно изменены ✅")
 
         msg = ms.user_profile_message(user)
-        await message.answer(msg, reply_markup=kb.user_profile_keyboard().as_markup())
+        has_gender = user.gender is not None
+        await message.answer(msg, reply_markup=kb.user_profile_keyboard(has_gender).as_markup())
 
     # ошибка введения данных
     except utils.FullnameException:
@@ -672,6 +681,44 @@ async def update_user_handler(message: types.Message, state: FSMContext) -> None
             pass
 
         await state.update_data(prev_mess=msg)
+
+
+@router.callback_query(F.data == "choose_gender")
+async def choose_user_gender(callback: types.CallbackQuery) -> None:
+    """Выбор пола"""
+    msg = "Выберите пол с помощью кнопок ниже"
+    keyboard = kb.choose_gender_keyboard()
+    await callback.message.edit_text(msg, reply_markup=keyboard.as_markup())
+
+
+@router.callback_query(F.data.split("|")[0] == "update_gender")
+async def confirm_update_gender(callback: types.CallbackQuery) -> None:
+    """Подтверждение выбора пола"""
+    gender_eng = callback.data.split("|")[1]
+    gener_rus = "мужской" if gender_eng == "male" else "женский"
+
+    msg = f"Указан <b>{gener_rus}</b> пол.\n" \
+          f"Подтвердите правильность выбора. В последствии вы <b>не сможете</b> изменить выбор."
+    keyboard = kb.confirm_choose_gender_keyboard(gender_eng)
+
+    await callback.message.edit_text(msg, reply_markup=keyboard.as_markup())
+
+
+@router.callback_query(F.data.split("|")[0] == "confirm_update_gender")
+async def update_gender(callback: types.CallbackQuery, session: Any) -> None:
+    """Запись пола в БД"""
+    tg_id = str(callback.from_user.id)
+    gender = callback.data.split("|")[1]
+
+    # запись в БД
+    try:
+        await AsyncOrm.update_user_gender(gender, tg_id, session)
+        msg = "Профиль успешно обновлен ✅"
+    except Exception:
+        msg = "Произошла ошибка, повторите запрос позже ❌"
+
+    keyboard = kb.back_keyboard("menu_profile")
+    await callback.message.edit_text(msg, reply_markup=keyboard.as_markup())
 
 
 @router.message(Command("test"))
@@ -707,7 +754,7 @@ async def players(message: types.Message) -> None:
         await wait_msg.delete()
         await message.answer_document(document)
     except Exception as e:
-        print(f"Не получилось отправить players.xlsx пользователю {message.from_user.id}: {e}")
+        logger.error(f"Не получилось отправить players.xlsx пользователю {message.from_user.id}: {e}")
 
 
 @router.callback_query(lambda callback: callback.data == "button_update_cancel", UpdateUserFSM.name)
@@ -718,7 +765,8 @@ async def cancel_handler(callback: types.CallbackQuery, state: FSMContext):
     user = await AsyncOrm.get_user_by_tg_id(str(callback.from_user.id))
 
     message = ms.user_profile_message(user)
-    await callback.message.edit_text(message, reply_markup=kb.user_profile_keyboard().as_markup())
+    has_gender = user.gender is not None
+    await callback.message.edit_text(message, reply_markup=kb.user_profile_keyboard(has_gender).as_markup())
 
 
 # CANCEL BUTTON
