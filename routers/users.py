@@ -7,10 +7,10 @@ from aiogram.filters import Command, StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.types import FSInputFile
 
-from database.schemas import Tournament, Event, TeamUsers
+from database.schemas import Tournament, Event, TeamUsers, TournamentTeams
 from routers.middlewares import CheckPrivateMessageMiddleware, DatabaseMiddleware
 from routers import keyboards as kb, messages as ms
-from routers.fsm_states import RegisterUserFSM, UpdateUserFSM
+from routers.fsm_states import RegisterUserFSM, UpdateUserFSM, RegNewTeamFSM
 from database import schemas
 from database.orm import AsyncOrm
 from routers import utils
@@ -114,7 +114,7 @@ async def user_events_dates_handler(callback: types.CallbackQuery, session: Any)
 
     # берем мероприятия за ближайших 10 дней
     events: list[Event] = await AsyncOrm.get_events(only_active=True, days_ahead=11)
-    # берем чемпионаты за ближайшие 10 дней
+    # берем турниры за ближайшие 10 дней
     tournaments: list[Tournament] = await AsyncOrm.get_all_tournaments(days_ahead=11, session=session)
 
     all_events.extend(events)
@@ -141,9 +141,11 @@ async def user_events_dates_handler(callback: types.CallbackQuery, session: Any)
     all_events = []
 
     user = await AsyncOrm.get_user_by_tg_id(str(callback.from_user.id))
-    events = await AsyncOrm.get_events_for_date(date, only_active=True)     # события кроме чемпионатов
-    tournaments: list[Tournament] = await AsyncOrm.get_all_tournaments_for_date(date, session)    # события кроме чемпионатов
+
+    events = await AsyncOrm.get_events_for_date(date, only_active=True)     # события кроме турниров
     reserved_events = await AsyncOrm.get_reserved_events_by_user_id(user.id)
+
+    tournaments: list[TournamentTeams] = await AsyncOrm.get_all_tournaments_for_date(date, session)    # турниры
 
     all_events.extend(events)
     all_events.extend(tournaments)
@@ -160,8 +162,13 @@ async def user_events_dates_handler(callback: types.CallbackQuery, session: Any)
 
 # FOR TOURNAMENTS
 @router.callback_query(lambda callback: callback.data.split("_")[0] == "user-tournament")
-async def user_tournament_handler(callback: types.CallbackQuery, session: Any) -> None:
+async def user_tournament_handler(callback: types.CallbackQuery, session: Any, state: FSMContext) -> None:
     """Вывод карточки турнира для пользователя"""
+    try:
+        await state.clear()
+    except:
+        pass
+
     tournament_id = int(callback.data.split("_")[1])
     user_tg_id = str(callback.from_user.id)
 
@@ -192,35 +199,66 @@ async def user_tournament_handler(callback: types.CallbackQuery, session: Any) -
         ).as_markup()
     )
 
-    #
-    # payment = await AsyncOrm.get_payment_by_event_and_user(event_id, user.id)
-    #
-    # # check full Event or not
-    # full_event: bool = len(event_with_users.users_registered) == event_with_users.places
-    #
-    # # получаем пользователь в резерве события
-    # reserved_users = await AsyncOrm.get_reserved_users_by_event_id(event_id)
-    #
-    # msg = ms.event_card_for_user_message(event_with_users, payment, reserved_users)
-    #
-    # await callback.message.edit_text(
-    #     msg,
-    #     disable_web_page_preview=True,
-    #     reply_markup=kb.event_card_keyboard(
-    #         event_id,
-    #         user.id,
-    #         payment,
-    #         f"events-date_{utils.convert_date(event_with_users.date)}",
-    #         full_event,
-    #     ).as_markup()
-    # )
-
 
 # REG NEW TEAM
-@router.callback_query(F.data == "register-new-team")
-async def register_new_team(callback: types.CallbackQuery) -> None:
+@router.callback_query(F.data.split("_")[0] == "register-new-team")
+async def register_new_team(callback: types.CallbackQuery, state: FSMContext) -> None:
     """Регистрация новой команды"""
-    await callback.message.edit_text("Reg new team here")
+    tournament_id = int(callback.data.split("_")[1])
+
+    # начинаем state
+    await state.set_state(RegNewTeamFSM.title)
+
+    keyboard = kb.back_keyboard(f"user-tournament_{tournament_id}")
+    message = "Введите название команды"
+
+    prev_message = await callback.message.edit_text(message, reply_markup=keyboard.as_markup())
+
+    await state.update_data(prev_message=prev_message)
+    await state.update_data(tournament_id=tournament_id)
+
+
+@router.message(RegNewTeamFSM.title)
+async def get_team_title(message: types.Message, state: FSMContext, session: Any) -> None:
+    """Получаем название команды"""
+    data = await state.get_data()
+    tournament_id = data["tournament_id"]
+
+    # Удаляем предыдущее сообщение
+    try:
+        await data["prev_message"].delete()
+    except:
+        pass
+
+    error_keyboard = kb.back_keyboard(f"user-tournament_{tournament_id}")
+
+    # Проверяем название команды
+    try:
+        team_title = message.text
+    except:
+        await message.answer("Некорректное название команды, попробуйте еще раз",
+                             reply_markup=error_keyboard.as_markup())
+        return
+
+    team_leader_id = str(message.from_user.id)
+    user = await AsyncOrm.get_user_by_tg_id(team_leader_id)
+
+    # Создаем новую команду
+    try:
+        await AsyncOrm.create_new_team(
+            tournament_id,
+            team_title,
+            user.id,
+            user.level,
+            session
+        )
+    except Exception as e:
+        await message.answer(f"Ошибка при создании команды", reply_markup=error_keyboard.as_markup())
+        return
+
+    keyboard = kb.back_to_tournament(tournament_id)
+    msg = f"✅ Команда <b>\"{team_title}\"</b> успешно зарегистрирована!\nТекущий уровень команды <b>{user.level}</b>"
+    await message.answer(msg, reply_markup=keyboard.as_markup())
 
 
 # REG IN TEAM
@@ -228,11 +266,32 @@ async def register_new_team(callback: types.CallbackQuery) -> None:
 async def register_in_team(callback: types.CallbackQuery, session: Any) -> None:
     """Запись в существующую команду"""
     team_id = int(callback.data.split("_")[1])
+    tournament_id = int(callback.data.split("_")[2])
+    tg_id = str(callback.from_user.id)
 
+    user = await AsyncOrm.get_user_by_tg_id(tg_id)
     team = await AsyncOrm.get_team(team_id, session)
-    print(team)
 
-    await callback.message.edit_text("Запись в существующую команду")
+    # Проверяем зарегистрирован ли пользователь в какую нибудь из команд
+    tournament: Tournament = await AsyncOrm.get_tournament_by_id(tournament_id, session)
+    tournament_teams: list[TeamUsers] = await AsyncOrm.get_teams_with_users(tournament_id, session)
+
+    user_already_has_another_team: bool = False
+    for reg_team in tournament_teams:
+        # Пропускаем текущую команду
+        if reg_team.team_id == team.team_id:
+            continue
+        if user.id in [reg_user.id for reg_user in reg_team.users]:
+            user_already_has_another_team = True
+
+    # Проверяем в этой ли команде пользователь
+    user_already_in_team: bool = False
+    if user.id in [reg_user.id for reg_user in team.users]:
+        user_already_in_team = True
+
+    message = ms.team_card(team, user_already_in_team, user_already_has_another_team)
+    keyboard = kb.team_card_keyboard(tournament_id, team_id, user_already_in_team, user_already_has_another_team)
+    await callback.message.edit_text(message, reply_markup=keyboard.as_markup())
 
 
 # FOR EVENTS

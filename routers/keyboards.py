@@ -6,7 +6,7 @@ from functools import wraps
 from typing import Callable, List
 
 from database.schemas import Event, User, EventRel, PaymentsEventsUsers, Payment, ReservedEvent, Tournament, Team, \
-    TeamUsers
+    TeamUsers, TournamentTeams
 from routers.utils import convert_date, convert_time, get_weekday_from_date
 from settings import settings
 
@@ -36,17 +36,31 @@ def menu_users_keyboard() -> InlineKeyboardBuilder:
 
 
 @back_button("all-events")
-def events_keyboard(events: list[EventRel | Tournament], user: User, reserved_events: List[ReservedEvent]) -> InlineKeyboardBuilder:
+def events_keyboard(events: list[EventRel | Tournament],
+                    user: User,
+                    reserved_events: List[ReservedEvent],
+                    ) -> InlineKeyboardBuilder:
     """Клавиатура с мероприятиями для вывода пользователю"""
     keyboard = InlineKeyboardBuilder()
 
     for event in events:
         # для чемпионатов
-        if type(event) == Tournament:
-            # TODO учесть где уже зареганы или в резерв
+        if type(event) == TournamentTeams:
+            teams = [team.users for team in event.teams]
+            registered_users = []
+            for reg_users in teams:
+                for reg_user in reg_users:
+                    registered_users.append(reg_user.id)
+
+            registered = ""
+            if user.id in registered_users:
+                registered = "✅️ "
+
+            # TODO add reserved
+
             time = event.date.time().strftime("%H:%M")
 
-            keyboard.row(InlineKeyboardButton(text=f"{time} 🏁 {event.type}",
+            keyboard.row(InlineKeyboardButton(text=f"{registered}{time} 🏁 {event.type}",
                                               callback_data=f"user-tournament_{event.id}"))
 
         elif type(event) == EventRel:
@@ -156,12 +170,21 @@ def tournament_card_keyboard(tournament_id: int, user_id: int, back_to: str, tea
 
     # Сортируем по названию команды
     ordered_teams = [team for team in sorted(teams, key=lambda x: x.title)]
+    user_already_has_team: bool = False
 
     if ordered_teams:
         for team in ordered_teams:
-            keyboard.row(InlineKeyboardButton(text=f"{team.title}", callback_data=f"register-in-team_{team.team_id}"))
+            # Проверяем зарегистрирован ли пользователь
+            registered = ""
+            registered_users = [user.id for user in team.users]
+            if user_id in registered_users:
+                registered = "✅️ "
+                user_already_has_team = True
 
-    keyboard.row(InlineKeyboardButton(text=f"✍️ Зарегистрировать команду", callback_data=f"register-new-team_{tournament_id}"))
+            keyboard.row(InlineKeyboardButton(text=f"{registered}{team.title}", callback_data=f"register-in-team_{team.team_id}_{tournament_id}"))
+
+    if not user_already_has_team:
+        keyboard.row(InlineKeyboardButton(text=f"✍️ Зарегистрировать команду", callback_data=f"register-new-team_{tournament_id}"))
     keyboard.row(InlineKeyboardButton(text=f"🔙 назад", callback_data=f"{back_to}"))
 
     return keyboard
@@ -361,6 +384,32 @@ def tournament_levels_keyboards() -> InlineKeyboardBuilder:
     keyboard.adjust(2)
 
     keyboard.row(InlineKeyboardButton(text="❌ Отмена", callback_data="button_cancel"))
+
+    return keyboard
+
+
+def back_to_tournament(tournament_id: int) -> InlineKeyboardBuilder:
+    """Клавиатура для возвращения к карточке чемпионата"""
+    keyboard = InlineKeyboardBuilder()
+
+    keyboard.row(InlineKeyboardButton(text="Вернуться к турниру", callback_data=f"user-tournament_{tournament_id}"))
+
+    return keyboard
+
+
+def team_card_keyboard(tournament_id: int, team_id: int, user_already_in_team: bool,
+                       user_already_has_another_team: bool) -> InlineKeyboardBuilder:
+    """Клавиатура карточки команды"""
+    keyboard = InlineKeyboardBuilder()
+
+    # Если пользователь еще не в команде и у него нет другой команды
+    if not user_already_in_team and not user_already_has_another_team:
+        keyboard.row(InlineKeyboardButton(text="Записаться в команду", callback_data=f"reg-user-in-team_{team_id}_{tournament_id}"))
+    # Если уже зарегистрирован
+    elif user_already_in_team:
+        keyboard.row(InlineKeyboardButton(text="Выйти из команды", callback_data=f"leave-user-from-team_{team_id}_{tournament_id}"))
+
+    keyboard.row(InlineKeyboardButton(text="🔙 назад", callback_data=f"user-tournament_{tournament_id}"))
 
     return keyboard
 

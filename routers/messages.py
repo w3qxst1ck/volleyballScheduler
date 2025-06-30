@@ -235,3 +235,21 @@ def get_help_message() -> str:
     return message
 
 
+def team_card(team: TeamUsers, user_already_in_team, user_already_has_another_team: bool) -> str:
+    """Вывод карточки команды"""
+    already_in_team = ""
+    if user_already_in_team:
+        already_in_team = "\n✅ Вы записаны в команду"
+    elif user_already_has_another_team:
+        already_in_team = "\n❗ Вы не можете записаться в команду, так как уже состоите в другой на этом турнире"
+
+    message = f"<b>\"{team.title}\"</b> суммарный уровень <b>{team.team_level}</b>{already_in_team}\n\nУчастники:\n"
+
+    count = 1
+    for user in team.users:
+        message += f"<b>{count}.</b> <a href='tg://user?id={user.tg_id}'>{user.firstname} {user.lastname}</a> (ур. {user.level})"
+        if user.id == team.team_leader_id:
+            message += " (капитан)"
+        message += "\n"
+
+    return message

@@ -31,3 +31,7 @@ class AddTournamentFSM(StatesGroup):
 
 class UpdateUserFSM(StatesGroup):
     name = State()
+
+
+class RegNewTeamFSM(StatesGroup):
+    title = State()

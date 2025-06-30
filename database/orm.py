@@ -8,7 +8,7 @@ from sqlalchemy.orm import joinedload, selectinload
 import asyncpg
 
 import settings
-from database.schemas import Tournament, TournamentAdd, Team, TeamUsers, User, UserAdd
+from database.schemas import Tournament, TournamentAdd, Team, TeamUsers, User, UserAdd, TournamentTeams
 from logger import logger
 from database.database import async_engine, async_session_factory
 from database.tables import Base
@@ -542,7 +542,7 @@ class AsyncOrm:
             logger.error(f"Ошибка при получении чемпионатов в период {date_before} - {date_after}: {e}")
 
     @staticmethod
-    async def get_all_tournaments_for_date(date: datetime.date, session: Any, active: bool = True) -> list[Tournament]:
+    async def get_all_tournaments_for_date(date: datetime.date, session: Any, active: bool = True) -> list[TournamentTeams]:
         """Получение всех чемпионатов в выбранную данную"""
         date_before = datetime.datetime.combine(date, datetime.datetime.min.time())
         date_after = date_before + datetime.timedelta(days=1)
@@ -557,25 +557,29 @@ class AsyncOrm:
                     """,
                     date_before, date_after
                 )
-                tournaments: list[Tournament] = [
-                    Tournament.model_validate(row) for row in rows
-                ]
+                result = []
+                for row in rows:
+                    tournament_id = row["id"]
+                    # получаем команды с пользователями для турнира
+                    teams_users: list[TeamUsers] = await AsyncOrm.get_teams_with_users(tournament_id, session)
 
-                return tournaments
-            # Вместе с неактивными
-            else:
-                rows = await session.fetch(
-                    """
-                    SELECT * FROM tournaments
-                    WHERE date > $1 AND date < $2
-                    """,
-                    date_before, date_after
-                )
-                tournaments: list[Tournament] = [
-                    Tournament.model_validate(row) for row in rows
-                ]
+                    tournament: TournamentTeams = TournamentTeams(
+                        id=row["id"],
+                        type=row["type"],
+                        title=row["title"],
+                        date=row["date"],
+                        max_team_count=row["max_team_count"],
+                        min_team_count=row["min_team_count"],
+                        min_team_players=row["min_team_players"],
+                        max_team_players=row["max_team_players"],
+                        active=row["active"],
+                        level=row["level"],
+                        price=row["price"],
+                        teams=teams_users
+                    )
+                    result.append(tournament)
 
-                return tournaments
+                return result
 
         except Exception as e:
             logger.error(f"Ошибка при получении чемпионатов в период {date_before} - {date_after}: {e}")
@@ -705,3 +709,30 @@ class AsyncOrm:
 
         except Exception as e:
             logger.error(f"Ошибка при получении команды с игроками {team_id}: {e}")
+
+    @staticmethod
+    async def create_new_team(tournament_id: int, title: str, team_leader_id: int, team_level: int, session: Any) -> None:
+        """Создаем новую команду для турнира"""
+        try:
+            async with session.transaction():
+                # Создаем команду
+                team_id = await session.fetchval(
+                    """
+                    INSERT INTO teams(title, level, team_leader_id, tournament_id)
+                    VALUES($1, $2, $3, $4)
+                    RETURNING id
+                    """,
+                    title, team_level, team_leader_id, tournament_id
+                )
+                # Добавляем в команду пользователя
+                await session.execute(
+                    """
+                    INSERT INTO teams_users(user_id, team_id)
+                    VALUES($1, $2)
+                    """,
+                    team_leader_id, team_id
+                )
+
+        except Exception as e:
+            logger.error(f"Ошибка при создании команды {title} турнира {tournament_id}: {e}")
+            raise

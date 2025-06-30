@@ -100,4 +100,7 @@ class Tournament(TournamentAdd):
     id: int
 
 
+class TournamentTeams(Tournament):
+    teams: list[TeamUsers]
+
 
