@@ -10,7 +10,7 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from database.database import async_engine
 from database.tables import Base
-from routers import admin, users, apsched, add_tournament
+from routers import admin, users, apsched, add_tournament, tournaments
 
 from settings import settings
 
@@ -60,7 +60,7 @@ async def start_bot() -> None:
 
     scheduler.start()
 
-    dispatcher.include_routers(admin.router, users.router, add_tournament.router)
+    dispatcher.include_routers(admin.router, users.router, add_tournament.router, tournaments.router)
     # await init_models()
 
     await dispatcher.start_polling(bot)

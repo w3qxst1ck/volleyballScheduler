@@ -754,3 +754,47 @@ class AsyncOrm:
         except Exception as e:
             logger.error(f"Ошибка при обновлении пола у пользователя {tg_id}: {e}")
             raise
+
+    @staticmethod
+    async def delete_team_from_tournament(team_id: int, tg_id: str, session: Any) -> None:
+        """Удаление всей команды с турнира"""
+        try:
+            async with session.transaction():
+                await session.execute(
+                    """
+                    DELETE FROM teams_users
+                    WHERE team_id = $1
+                    """,
+                    team_id
+                )
+                await session.execute(
+                    """
+                    DELETE FROM teams
+                    WHERE id = $1
+                    """,
+                    team_id
+                )
+
+            logger.info(f"Пользователь tg_id {tg_id} удалил команду {team_id}")
+
+        except Exception as e:
+            logger.error(f"Ошибка при удалении команды {team_id} с турнира: {e}")
+            raise
+
+    @staticmethod
+    async def delete_user_from_team(team_id: int, user_id: int, session: Any) -> None:
+        """Удаляем пользователя из команды"""
+        try:
+            await session.execute(
+                """
+                DELETE FROM teams_users
+                WHERE team_id = $1 AND user_id= $2
+                """,
+                team_id, user_id
+            )
+
+            logger.info(f"Пользователь {user_id} вышел из команды {team_id}")
+
+        except Exception as e:
+            logger.error(f"Ошибка при удалении пользователя {user_id} из команды {team_id}: {e}")
+            raise

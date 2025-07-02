@@ -60,7 +60,7 @@ def events_keyboard(events: list[EventRel | Tournament],
 
             time = event.date.time().strftime("%H:%M")
 
-            keyboard.row(InlineKeyboardButton(text=f"{registered}{time} 🏁 {event.type}",
+            keyboard.row(InlineKeyboardButton(text=f"{registered}{time} 🏆 {event.type}",
                                               callback_data=f"user-tournament_{event.id}"))
 
         elif type(event) == EventRel:
@@ -438,6 +438,28 @@ def team_card_keyboard(tournament_id: int, team_id: int, user_already_in_team: b
 
     keyboard.row(InlineKeyboardButton(text="🔙 назад", callback_data=f"user-tournament_{tournament_id}"))
 
+    return keyboard
+
+
+def yes_no_leave_team_keyboard(user_is_team_leader: bool, team_id: int, tournament_id: int) -> InlineKeyboardBuilder:
+    """Клавиатура подтверждения выхода из команды"""
+    keyboard = InlineKeyboardBuilder()
+
+    # Для капитана предлагаем удалить команду
+    if user_is_team_leader:
+        keyboard.row(InlineKeyboardButton(text="Да",
+                                          callback_data=f"c-del-team_{team_id}_{tournament_id}"))
+        keyboard.row(InlineKeyboardButton(text="Нет",
+                                          callback_data=f"register-in-team_{team_id}_{tournament_id}"))
+    # Для обычных пользователей
+    else:
+        keyboard.row(InlineKeyboardButton(text="Да",
+                                          callback_data=f"del-team_{team_id}_{tournament_id}"))
+        keyboard.row(InlineKeyboardButton(text="Нет",
+                                          callback_data=f"register-in-team_{team_id}_{tournament_id}"))
+
+    # keyboard.row(InlineKeyboardButton(text="🔙 назад", callback_data=f"user-tournament_{tournament_id}"))
+    keyboard.adjust(2)
     return keyboard
 
 
