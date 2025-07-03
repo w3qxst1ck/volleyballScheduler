@@ -57,7 +57,7 @@ async def user_tournament_handler(callback: types.CallbackQuery, session: Any, s
         msg,
         disable_web_page_preview=True,
         reply_markup=kb.tournament_card_keyboard(
-            tournament_id,
+            tournament,
             user.id,
             f"events-date_{utils.convert_date(tournament.date)}",
             teams_users
@@ -119,8 +119,10 @@ async def get_team_title(message: types.Message, state: FSMContext, session: Any
         )
     except Exception as e:
         await message.answer(f"Ошибка при создании команды", reply_markup=error_keyboard.as_markup())
+        await state.clear()
         return
 
+    await state.clear()
     keyboard = kb.back_to_tournament(tournament_id)
     msg = f"✅ Команда <b>\"{team_title}\"</b> успешно зарегистрирована!\nТекущий уровень команды <b>{user.level}</b>"
     await message.answer(msg, reply_markup=keyboard.as_markup())

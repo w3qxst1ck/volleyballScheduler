@@ -191,7 +191,7 @@ def my_event_card_keyboard(payment: Payment, reserved_event: bool = False) -> In
     return keyboard
 
 
-def tournament_card_keyboard(tournament_id: int, user_id: int, back_to: str, teams: list[TeamUsers]) -> InlineKeyboardBuilder:
+def tournament_card_keyboard(tournament: Tournament, user_id: int, back_to: str, teams: list[TeamUsers]) -> InlineKeyboardBuilder:
     """Зарегистрироваться на чемпионат"""
     keyboard = InlineKeyboardBuilder()
 
@@ -208,10 +208,15 @@ def tournament_card_keyboard(tournament_id: int, user_id: int, back_to: str, tea
                 registered = "✅️ "
                 user_already_has_team = True
 
-            keyboard.row(InlineKeyboardButton(text=f"{registered}{team.title}", callback_data=f"register-in-team_{team.team_id}_{tournament_id}"))
+            keyboard.row(InlineKeyboardButton(text=f"{registered}{team.title}", callback_data=f"register-in-team_{team.team_id}_{tournament.id}"))
 
+    # проверка не состоит ли участник в другой команде
     if not user_already_has_team:
-        keyboard.row(InlineKeyboardButton(text=f"✍️ Зарегистрировать команду", callback_data=f"register-new-team_{tournament_id}"))
+        # проверка свободных мест для команд
+        if len(teams) < tournament.max_team_count:
+            keyboard.row(InlineKeyboardButton(text=f"✍️ Зарегистрировать команду", callback_data=f"register-new-team_{tournament.id}"))
+        else:
+            keyboard.row(InlineKeyboardButton(text=f"📝 Записать команду в резерв", callback_data=f"register-reserve-team_{tournament.id}"))
     keyboard.row(InlineKeyboardButton(text=f"🔙 назад", callback_data=f"{back_to}"))
 
     return keyboard

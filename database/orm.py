@@ -614,7 +614,7 @@ class AsyncOrm:
                 FROM teams AS t
                 JOIN teams_users AS tu ON t.id = tu.team_id
                 JOIN users AS u ON tu.user_id=u.id
-                WHERE tournament_id = $1
+                WHERE t.tournament_id = $1
                 """,
                 tournament_id
             )

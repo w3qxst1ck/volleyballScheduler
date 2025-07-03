@@ -33,10 +33,16 @@ def tournament_card_for_user_message(event: Tournament, teams_users: list[TeamUs
     time = convert_time(event.date)
     weekday = settings.weekdays[datetime.datetime.weekday(event.date)]
 
+    print(teams_users)
+
     # формируем и сортируем команды
     ordered_teams = [team for team in sorted(teams_users, key=lambda x: x.title)]
 
+    # количество команд
+    teams_count = len(teams_users)
+
     message = f"📅 <b>{date}, {time} ({weekday})</b>\n"
+    # TODO Поправить количество команд
     message += f"🏁 <b>\"{event.type}\"</b>\n" \
                f"  • {event.title}\n" \
                f"  • <b>Минимальный уровень команды:</b> {event.level}\n" \
