@@ -433,12 +433,22 @@ def back_to_tournament(tournament_id: int) -> InlineKeyboardBuilder:
 
 
 def team_card_keyboard(tournament_id: int, team_id: int, user_already_in_team: bool,
-                       user_already_has_another_team: bool) -> InlineKeyboardBuilder:
-    """Клавиатура карточки команды"""
+                       user_already_has_another_team: bool, over_points: bool,
+                       over_players_count: bool, wrong_level: bool) -> InlineKeyboardBuilder:
+    """
+    Клавиатура карточки команды
+    user_already_in_team: bool - пользователь уже в этой команде
+    user_already_has_another_team: bool - пользователь уже в другой команде на этом турнире
+    over_points: bool - количество баллов команды с пользователем превысит лимит
+    over_players_count: bool - количество игроков команды с пользователем превысит лимит
+    wrong_level: bool - неподходящий уровень для турнира
+    """
     keyboard = InlineKeyboardBuilder()
 
-    # Если пользователь еще не в команде и у него нет другой команды
-    if not user_already_in_team and not user_already_has_another_team:
+    # Если пользователь еще не в команде, у него нет другой команды
+    # и суммарное количество баллов не будет превышать лимит
+    if not user_already_in_team and not user_already_has_another_team and not over_points and not over_players_count \
+            and not wrong_level:
         keyboard.row(InlineKeyboardButton(text="Записаться в команду", callback_data=f"reg-user-in-team_{team_id}_{tournament_id}"))
     # Если уже зарегистрирован
     elif user_already_in_team:

@@ -11,6 +11,7 @@ from routers import keyboards as kb, messages as ms
 from routers.fsm_states import RegNewTeamFSM
 from database.orm import AsyncOrm
 from routers import utils
+from routers.utils import calculate_team_points
 from settings import settings
 
 router = Router()
@@ -143,10 +144,11 @@ async def team_card(callback: types.CallbackQuery, session: Any) -> None:
     user = await AsyncOrm.get_user_by_tg_id(tg_id)
     team = await AsyncOrm.get_team(team_id, session)
 
-    # Проверяем зарегистрирован ли пользователь в какую нибудь из команд
-    # tournament: Tournament = await AsyncOrm.get_tournament_by_id(tournament_id, session)
+    # TODO почему было закомментированно tournament???
+    tournament: Tournament = await AsyncOrm.get_tournament_by_id(tournament_id, session)
     tournament_teams: list[TeamUsers] = await AsyncOrm.get_teams_with_users(tournament_id, session)
 
+    # Проверяем зарегистрирован ли пользователь в какую нибудь из команд
     user_already_has_another_team: bool = False
     for reg_team in tournament_teams:
         # Пропускаем текущую команду
@@ -155,13 +157,34 @@ async def team_card(callback: types.CallbackQuery, session: Any) -> None:
         if user.id in [reg_user.id for reg_user in reg_team.users]:
             user_already_has_another_team = True
 
-    # Проверяем в этой ли команде пользователь
+    # Проверяем в этой ли команде пользователь, есть ли место и позволяют ли баллы
     user_already_in_team: bool = False
     if user.id in [reg_user.id for reg_user in team.users]:
         user_already_in_team = True
 
-    message = ms.team_card(team, user_already_in_team, user_already_has_another_team)
-    keyboard = kb.team_card_keyboard(tournament_id, team_id, user_already_in_team, user_already_has_another_team)
+    # если он не состоит ни в какой команде
+    over_points: bool = False
+    over_players_count: bool = False
+    wrong_level: bool = False
+    if not user_already_in_team and not user_already_has_another_team:
+        # проверяем позволяет ли количество баллов зайти в команду
+        team_with_new_user = team.users + [user]
+        team_points = calculate_team_points(team_with_new_user)
+        if team_points > settings.tournament_points[tournament.level][1]:
+            over_points = True
+
+        # проверяем есть ли место в команде
+        if len(team.users) + 1 > tournament.max_team_players:
+            over_players_count = True
+
+        # проверяем позволяет ли уровень игрока записаться
+        if user.level == 1 or user.level > tournament.level:
+            wrong_level = True
+
+    message = ms.team_card(team, user_already_in_team, user_already_has_another_team, over_points, over_players_count,
+                           wrong_level)
+    keyboard = kb.team_card_keyboard(tournament_id, team_id, user_already_in_team, user_already_has_another_team,
+                                     over_points, over_players_count, wrong_level)
     await callback.message.edit_text(message, reply_markup=keyboard.as_markup())
 
 

@@ -236,6 +236,10 @@ def calculate_team_points(users: List[User]) -> int:
 
     # берем баллы 6 сильнейших
     for user in sorted_users[:6]:
+        # пропускаем людей с уровнем Новичок
+        if user.level == 1:
+            continue
+
         user_points = settings.user_points[user.gender][user.level]
         team_points += user_points
 

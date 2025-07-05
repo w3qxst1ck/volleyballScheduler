@@ -40,7 +40,7 @@ def tournament_card_for_user_message(event: Tournament, teams_users: list[TeamUs
     teams_count = len(teams_users)
 
     message = f"📅 <b>{date}, {time} ({weekday})</b>\n"
-    message += f"🏆 <b>\"{event.type}\"</b>\n" \
+    message += f"🏆 <b>\"{event.type}\"</b> ({settings.tournament_points[event.level][0]})\n" \
                f"  • {event.title}\n" \
                f"  • <b>Максимальное кол-во баллов команды:</b> {settings.tournament_points[event.level][1]}\n" \
                f"💰 <b>Стоимость участия для команды:</b> {event.price} руб.\n\n" \
@@ -241,13 +241,27 @@ def get_help_message() -> str:
     return message
 
 
-def team_card(team: TeamUsers, user_already_in_team, user_already_has_another_team: bool) -> str:
-    """Вывод карточки команды"""
+def team_card(team: TeamUsers, user_already_in_team, user_already_has_another_team: bool, over_points: bool,
+              over_players_count: bool, wrong_level: bool) -> str:
+    """
+    Вывод карточки команды
+    user_already_in_team: bool - пользователь уже в этой команде
+    user_already_has_another_team: bool - пользователь уже в другой команде на этом турнире
+    over_points: bool - количество баллов команды с пользователем превысит лимит
+    over_players_count: bool - количество игроков команды с пользователем превысит лимит
+    wrong_level: bool - неподходящий уровень для турнира
+    """
     already_in_team = ""
     if user_already_in_team:
         already_in_team = "\n✅ Вы записаны в команду"
     elif user_already_has_another_team:
         already_in_team = "\n❗ Вы не можете записаться в команду, так как уже состоите в другой на этом турнире"
+    elif over_points:
+        already_in_team = "\n❗ Вы не можете записаться в команду, так как суммарное количество баллов команды будет превышать разрешенный лимит"
+    elif over_players_count:
+        already_in_team = "\n❗ Вы не можете записаться в команду, так как команда уже заполнена"
+    elif wrong_level:
+        already_in_team = "\n❗ Вы не можете записаться в команду, так как у вас неподходящий уровень"
 
     team_points = calculate_team_points(team.users)
     message = f"<b>{team.title}</b>\nКоличество баллов: <b>{team_points}</b>{already_in_team}\n\nУчастники:\n"
