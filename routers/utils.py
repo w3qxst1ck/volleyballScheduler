@@ -6,6 +6,8 @@ from database import schemas
 import pytz
 from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment, Border, Side
+
+from database.schemas import User
 from settings import settings
 
 
@@ -217,6 +219,30 @@ async def write_excel_file(data: List[schemas.User]) -> None:
 
     wb.save("players/players.xlsx")
     print('DataFrame is written to Excel File successfully.')
+
+
+def calculate_team_points(users: List[User]) -> int:
+    """
+    Подсчет количества баллов команды для турниров (берется 6 лучших игроков).
+    Влияет пол игрока и его уровень.
+    """
+    if len(users) == 0:
+        return 0
+
+    team_points = 0
+
+    # сортируем по уровню
+    sorted_users = sorted(users, key=lambda u: u.level, reverse=True)
+
+    # берем баллы 6 сильнейших
+    for user in sorted_users[:6]:
+        user_points = settings.user_points[user.gender][user.level]
+        team_points += user_points
+
+    return team_points
+
+
+
 
 
 

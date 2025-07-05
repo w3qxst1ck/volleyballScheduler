@@ -109,13 +109,16 @@ async def get_team_title(message: types.Message, state: FSMContext, session: Any
     team_leader_id = str(message.from_user.id)
     user = await AsyncOrm.get_user_by_tg_id(team_leader_id)
 
+    # количество баллов капитана для создания команды
+    user_points = settings.user_points[user.gender][user.level]
+
     # Создаем новую команду
     try:
         await AsyncOrm.create_new_team(
             tournament_id,
             team_title,
             user.id,
-            user.level,
+            user_points,
             session
         )
     except Exception as e:
@@ -125,7 +128,7 @@ async def get_team_title(message: types.Message, state: FSMContext, session: Any
 
     await state.clear()
     keyboard = kb.back_to_tournament(tournament_id)
-    msg = f"✅ Команда <b>\"{team_title}\"</b> успешно зарегистрирована!\nТекущий уровень команды <b>{user.level}</b>"
+    msg = f"✅ Команда <b>\"{team_title}\"</b> успешно зарегистрирована!"
     await message.answer(msg, reply_markup=keyboard.as_markup())
 
 
@@ -274,7 +277,8 @@ async def delete_team_from_tournament(callback: types.CallbackQuery, session: An
     # Удаляем одного пользователя из команды
     else:
         try:
-            await AsyncOrm.delete_user_from_team(team_id, user.id, session)
+            user_points = settings.user_points[user.gender][user.level]
+            await AsyncOrm.delete_user_from_team(team_id, user.id, user_points, session)
             await callback.message.edit_text(
                 f"✅ Вы вышли из команды \"{team.title}\"!",
                 reply_markup=keyboard.as_markup()

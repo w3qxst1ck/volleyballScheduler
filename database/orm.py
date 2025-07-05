@@ -609,7 +609,7 @@ class AsyncOrm:
             rows = await session.fetch(
                 """
                 SELECT t.id AS team_id, t.title AS title, t.level AS team_level, t.team_leader_id as team_leader_id, 
-                u.id AS user_id, u.tg_id AS tg_id, u.username AS username, u.firstname AS firstname, 
+                u.id AS user_id, u.tg_id AS tg_id, u.username AS username, u.firstname AS firstname, u.gender,
                 u.lastname AS lastname, u.level AS user_level 
                 FROM teams AS t
                 JOIN teams_users AS tu ON t.id = tu.team_id
@@ -629,7 +629,8 @@ class AsyncOrm:
                         username=row["username"],
                         firstname=row["firstname"],
                         lastname=row["lastname"],
-                        level=row["user_level"]
+                        level=row["user_level"],
+                        gender=row["gender"]
                 )
                 if row["title"] in teams_users.keys():
                     teams_users[row["title"]].append(user)
@@ -664,7 +665,7 @@ class AsyncOrm:
                 """
                 SELECT t.id AS team_id, t.title AS title, t.level AS team_level, t.team_leader_id as team_leader_id, 
                 u.id AS user_id, u.tg_id AS tg_id, u.username AS username, u.firstname AS firstname, 
-                u.lastname AS lastname, u.level AS user_level 
+                u.lastname AS lastname, u.level AS user_level, u.gender
                 FROM teams AS t
                 JOIN teams_users AS tu ON t.id = tu.team_id
                 JOIN users AS u ON tu.user_id=u.id
@@ -683,7 +684,8 @@ class AsyncOrm:
                     username=row["username"],
                     firstname=row["firstname"],
                     lastname=row["lastname"],
-                    level=row["user_level"]
+                    level=row["user_level"],
+                    gender=row["gender"]
                 )
                 if row["title"] in teams_users.keys():
                     teams_users[row["title"]].append(user)
@@ -782,9 +784,10 @@ class AsyncOrm:
             raise
 
     @staticmethod
-    async def delete_user_from_team(team_id: int, user_id: int, session: Any) -> None:
+    async def delete_user_from_team(team_id: int, user_id: int, user_points: int, session: Any) -> None:
         """Удаляем пользователя из команды"""
         try:
+            # убираем пользователя из команды
             await session.execute(
                 """
                 DELETE FROM teams_users
@@ -793,6 +796,16 @@ class AsyncOrm:
                 team_id, user_id
             )
 
+            # уменьшаем количество баллов у команды
+            # await session.execute(
+            #     """
+            #     UPDATE teams
+            #     SET level = level - $1
+            #     WHERE id = $2
+            #     """,
+            #     user_points, team_id
+            # )
+
             logger.info(f"Пользователь {user_id} вышел из команды {team_id}")
 
         except Exception as e:
@@ -800,9 +813,10 @@ class AsyncOrm:
             raise
 
     @staticmethod
-    async def add_user_in_team(team_id: int, user_id: int, session: Any) -> None:
+    async def add_user_in_team(team_id: int, user_id: int, user_points: int, session: Any) -> None:
         """Добавление пользователя в команду"""
         try:
+            # добавляем пользователя в команду
             await session.execute(
                 """
                 INSERT INTO teams_users(user_id, team_id)
@@ -810,6 +824,16 @@ class AsyncOrm:
                 """,
                 user_id, team_id
             )
+
+            # увеличиваем количество баллов команды
+            # await session.execute(
+            #     """
+            #     UPDATE teams
+            #     SET level = level + $1
+            #     WHERE id = $2
+            #     """,
+            #     user_points, team_id
+            # )
 
             logger.info(f"Пользователь {user_id} вступил в команду {team_id}")
 

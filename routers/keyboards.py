@@ -43,7 +43,10 @@ def events_keyboard(events: list[EventRel | Tournament],
     """Клавиатура с мероприятиями для вывода пользователю"""
     keyboard = InlineKeyboardBuilder()
 
-    for event in events:
+    # сортировка по времени
+    sorted_events = sorted(events, key=lambda e: e.date)
+
+    for event in sorted_events:
         # для чемпионатов
         if type(event) == TournamentTeams:
             teams = [team.users for team in event.teams]

@@ -5,8 +5,8 @@ LEVELS = {
     1: "Новичок",
     2: "🏐 Новичок+",
     3: "🥉 Лайт",
-    4: "🥈 Лайт +",
-    5: "🥇 Лайт ++",
+    4: "🥈 Лайт+",
+    5: "🥇 Лайт++",
     6: "🏅 Медиум",
     7: "🏆 Хард",
 }
@@ -15,6 +15,26 @@ TOURNAMENT_POINTS = {
     4: ("🥉 Новичок+/Лайт", 16),
     5: ("🥈 Лайт/Лайт+", 22),
     6: ("🥇 Лайт+/Лайт++", 32),
+}
+
+# LEVEL:POINTS
+USER_POINTS = {
+    "male": {
+        2: 1,
+        3: 3,
+        4: 4,
+        5: 6,
+        6: 7,
+        7: 8,
+    },
+    "female": {
+        2: 1,
+        3: 1,
+        4: 2,
+        5: 2,
+        6: 3,
+        7: 4,
+    }
 }
 
 WEEKDAYS = {
@@ -50,6 +70,7 @@ class Settings(BaseSettings):
     levels: dict = LEVELS
     weekdays: dict = WEEKDAYS
     tournament_points: dict = TOURNAMENT_POINTS
+    user_points: dict = USER_POINTS
     expire_event_days: int = 14
     admin_phone: str
     support_contact: str

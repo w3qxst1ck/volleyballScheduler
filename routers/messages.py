@@ -2,7 +2,7 @@ from typing import List
 
 from database.schemas import User, EventRel, Event, PaymentsEventsUsers, Payment, ReservedUser, Tournament, Team, \
     TeamUsers
-from routers.utils import convert_date, convert_time, convert_date_named_month
+from routers.utils import convert_date, convert_time, convert_date_named_month, calculate_team_points
 from settings import settings
 import datetime
 
@@ -33,7 +33,6 @@ def tournament_card_for_user_message(event: Tournament, teams_users: list[TeamUs
     time = convert_time(event.date)
     weekday = settings.weekdays[datetime.datetime.weekday(event.date)]
 
-    print(teams_users)
     # формируем и сортируем команды
     ordered_teams = [team for team in sorted(teams_users, key=lambda x: x.title)]
 
@@ -41,10 +40,9 @@ def tournament_card_for_user_message(event: Tournament, teams_users: list[TeamUs
     teams_count = len(teams_users)
 
     message = f"📅 <b>{date}, {time} ({weekday})</b>\n"
-    # TODO Поправить количество команд
-    message += f"🏁 <b>\"{event.type}\"</b>\n" \
+    message += f"🏆 <b>\"{event.type}\"</b>\n" \
                f"  • {event.title}\n" \
-               f"  • <b>Минимальный уровень команды:</b> {event.level}\n" \
+               f"  • <b>Максимальное кол-во баллов команды:</b> {settings.tournament_points[event.level][1]}\n" \
                f"💰 <b>Стоимость участия для команды:</b> {event.price} руб.\n\n" \
                f"👥 <b>Количество команд:</b> {teams_count}/{event.max_team_count} (доступно {event.max_team_count - teams_count} мест)\n" \
                f"👥 <b>Количество участников в команде:</b> {event.min_team_players}-{event.max_team_players}\n" \
@@ -56,7 +54,10 @@ def tournament_card_for_user_message(event: Tournament, teams_users: list[TeamUs
         message += "<b>Зарегистрированные команды:</b>\n"
 
         for team in ordered_teams:
-            message += f"{count}. \"{team.title}\" уровень - {team.team_level}\n"
+            # баллы команды
+            team_points = calculate_team_points(team.users)
+
+            message += f"{count}. \"{team.title}\" (баллов: {team_points})\n"
             count += 1
 
     return message
@@ -248,11 +249,11 @@ def team_card(team: TeamUsers, user_already_in_team, user_already_has_another_te
     elif user_already_has_another_team:
         already_in_team = "\n❗ Вы не можете записаться в команду, так как уже состоите в другой на этом турнире"
 
-    message = f"<b>\"{team.title}\"</b> суммарный уровень <b>{team.team_level}</b>{already_in_team}\n\nУчастники:\n"
+    team_points = calculate_team_points(team.users)
+    message = f"<b>{team.title}</b>\nКоличество баллов: <b>{team_points}</b>{already_in_team}\n\nУчастники:\n"
 
-    count = 1
-    for user in team.users:
-        message += f"<b>{count}.</b> <a href='tg://user?id={user.tg_id}'>{user.firstname} {user.lastname}</a> (ур. {user.level})"
+    for count, user in enumerate(team.users, start=1):
+        message += f"<b>{count}.</b> <a href='tg://user?id={user.tg_id}'>{user.firstname} {user.lastname}</a> {settings.levels[user.level]}"
         if user.id == team.team_leader_id:
             message += " (капитан)"
         message += "\n"
