@@ -468,6 +468,16 @@ def yes_no_leave_team_keyboard(user_is_team_leader: bool, team_id: int, tourname
     return keyboard
 
 
+def yes_no_accept_user_in_team_keyboard(team_id: int, user_id: int) -> InlineKeyboardBuilder:
+    """Клавиатура подтверждения принятия игрока в команду"""
+    keyboard = InlineKeyboardBuilder()
+    keyboard.row(InlineKeyboardButton(text="Да",
+                                      callback_data=f"accept-user-in-team_{team_id}_{user_id}"))
+    keyboard.row(InlineKeyboardButton(text="Нет",
+                                      callback_data=f"refuse-user-in-team_{team_id}_{user_id}"))
+    return keyboard
+
+
 def back_and_choose_gender_keyboard(back_to: str) -> InlineKeyboardBuilder:
     """Клавиатура назад если пол еще не указан"""
     keyboard = InlineKeyboardBuilder()

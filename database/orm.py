@@ -798,3 +798,21 @@ class AsyncOrm:
         except Exception as e:
             logger.error(f"Ошибка при удалении пользователя {user_id} из команды {team_id}: {e}")
             raise
+
+    @staticmethod
+    async def add_user_in_team(team_id: int, user_id: int, session: Any) -> None:
+        """Добавление пользователя в команду"""
+        try:
+            await session.execute(
+                """
+                INSERT INTO teams_users(user_id, team_id)
+                VALUES($1, $2)
+                """,
+                user_id, team_id
+            )
+
+            logger.info(f"Пользователь {user_id} вступил в команду {team_id}")
+
+        except Exception as e:
+            logger.error(f"Ошибка при добавлении пользователя {user_id} команду {team_id}: {e}")
+            raise

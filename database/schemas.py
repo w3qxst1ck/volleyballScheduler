@@ -73,7 +73,6 @@ class Team(BaseModel):
     level: int
     team_leader_id: int
     tournament_id: int
-    # TODO add users
 
 
 class TeamUsers(BaseModel):
