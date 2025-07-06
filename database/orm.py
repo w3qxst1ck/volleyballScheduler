@@ -8,7 +8,7 @@ from sqlalchemy.orm import joinedload, selectinload
 import asyncpg
 
 import settings
-from database.schemas import Tournament, TournamentAdd, Team, TeamUsers, User, UserAdd, TournamentTeams
+from database.schemas import Tournament, TournamentAdd, TeamUsers, User, UserAdd, TournamentTeams
 from logger import logger
 from database.database import async_engine, async_session_factory
 from database.tables import Base
@@ -608,7 +608,7 @@ class AsyncOrm:
         try:
             rows = await session.fetch(
                 """
-                SELECT t.id AS team_id, t.title AS title, t.level AS team_level, t.team_leader_id as team_leader_id, 
+                SELECT t.id AS team_id, t.title AS title, t.team_leader_id as team_leader_id, 
                 u.id AS user_id, u.tg_id AS tg_id, u.username AS username, u.firstname AS firstname, u.gender,
                 u.lastname AS lastname, u.level AS user_level 
                 FROM teams AS t
@@ -646,7 +646,6 @@ class AsyncOrm:
                     result.append(TeamUsers(
                         team_id=row["team_id"],
                         title=row["title"],
-                        team_level=row["team_level"],
                         team_leader_id=row["team_leader_id"],
                         users=teams_users[row["title"]]
                     ))
@@ -663,7 +662,7 @@ class AsyncOrm:
         try:
             rows = await session.fetch(
                 """
-                SELECT t.id AS team_id, t.title AS title, t.level AS team_level, t.team_leader_id as team_leader_id, 
+                SELECT t.id AS team_id, t.title AS title, t.team_leader_id as team_leader_id, 
                 u.id AS user_id, u.tg_id AS tg_id, u.username AS username, u.firstname AS firstname, 
                 u.lastname AS lastname, u.level AS user_level, u.gender
                 FROM teams AS t
@@ -701,7 +700,6 @@ class AsyncOrm:
                     result.append(TeamUsers(
                         team_id=row["team_id"],
                         title=row["title"],
-                        team_level=row["team_level"],
                         team_leader_id=row["team_leader_id"],
                         users=teams_users[row["title"]]
                     ))
@@ -713,18 +711,18 @@ class AsyncOrm:
             logger.error(f"Ошибка при получении команды с игроками {team_id}: {e}")
 
     @staticmethod
-    async def create_new_team(tournament_id: int, title: str, team_leader_id: int, team_level: int, session: Any) -> None:
+    async def create_new_team(tournament_id: int, title: str, team_leader_id: int, session: Any) -> int:
         """Создаем новую команду для турнира"""
         try:
             async with session.transaction():
                 # Создаем команду
                 team_id = await session.fetchval(
                     """
-                    INSERT INTO teams(title, level, team_leader_id, tournament_id)
-                    VALUES($1, $2, $3, $4)
+                    INSERT INTO teams(title, team_leader_id, tournament_id)
+                    VALUES($1, $2, $3)
                     RETURNING id
                     """,
-                    title, team_level, team_leader_id, tournament_id
+                    title, team_leader_id, tournament_id
                 )
                 # Добавляем в команду пользователя
                 await session.execute(
@@ -734,6 +732,7 @@ class AsyncOrm:
                     """,
                     team_leader_id, team_id
                 )
+                return team_id
 
         except Exception as e:
             logger.error(f"Ошибка при создании команды {title} турнира {tournament_id}: {e}")
@@ -784,7 +783,7 @@ class AsyncOrm:
             raise
 
     @staticmethod
-    async def delete_user_from_team(team_id: int, user_id: int, user_points: int, session: Any) -> None:
+    async def delete_user_from_team(team_id: int, user_id: int, session: Any) -> None:
         """Удаляем пользователя из команды"""
         try:
             # убираем пользователя из команды
@@ -796,16 +795,6 @@ class AsyncOrm:
                 team_id, user_id
             )
 
-            # уменьшаем количество баллов у команды
-            # await session.execute(
-            #     """
-            #     UPDATE teams
-            #     SET level = level - $1
-            #     WHERE id = $2
-            #     """,
-            #     user_points, team_id
-            # )
-
             logger.info(f"Пользователь {user_id} вышел из команды {team_id}")
 
         except Exception as e:
@@ -813,7 +802,7 @@ class AsyncOrm:
             raise
 
     @staticmethod
-    async def add_user_in_team(team_id: int, user_id: int, user_points: int, session: Any) -> None:
+    async def add_user_in_team(team_id: int, user_id: int, session: Any) -> None:
         """Добавление пользователя в команду"""
         try:
             # добавляем пользователя в команду
@@ -825,18 +814,27 @@ class AsyncOrm:
                 user_id, team_id
             )
 
-            # увеличиваем количество баллов команды
-            # await session.execute(
-            #     """
-            #     UPDATE teams
-            #     SET level = level + $1
-            #     WHERE id = $2
-            #     """,
-            #     user_points, team_id
-            # )
-
             logger.info(f"Пользователь {user_id} вступил в команду {team_id}")
 
         except Exception as e:
             logger.error(f"Ошибка при добавлении пользователя {user_id} команду {team_id}: {e}")
+            raise
+
+    @staticmethod
+    async def create_reserve_team(team_id: int, tournament_id: int, session: Any) -> None:
+        """Создание команды в резерве"""
+        date = datetime.datetime.now()
+        try:
+            await session.execute(
+                """
+                INSERT INTO reserved_tournaments (team_id, tournament_id, date)
+                VALUES ($1, $2, $3)
+                """,
+                team_id, tournament_id, date
+            )
+
+            logger.info(f"Команда с id {team_id} записана в резерв")
+
+        except Exception as e:
+            logger.error(f"Ошибка при создании команды с id {team_id} в резерв")
             raise

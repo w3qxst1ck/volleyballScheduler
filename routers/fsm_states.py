@@ -35,3 +35,7 @@ class UpdateUserFSM(StatesGroup):
 
 class RegNewTeamFSM(StatesGroup):
     title = State()
+
+
+class RegReserveTeamFSM(StatesGroup):
+    title = State()

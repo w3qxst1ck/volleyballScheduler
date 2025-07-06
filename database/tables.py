@@ -140,7 +140,6 @@ class Tournament(Base):
 
     teams: Mapped[list["Team"]] = relationship(
         back_populates="tournament"
-        # secondary="tournaments_teams",
     )
 
     payments: Mapped[list["PaymentsTournament"]] = relationship(
@@ -158,8 +157,8 @@ class Team(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     title: Mapped[str] = mapped_column(index=True)
-    level: Mapped[int] = mapped_column(nullable=True)
     team_leader_id: Mapped[int] = mapped_column(nullable=False)
+    team_libero_id: Mapped[int] = mapped_column(nullable=True)
 
     users: Mapped[list["User"]] = relationship(
         back_populates="teams",
@@ -206,21 +205,6 @@ class ReservedTournaments(Base):
 
     tournament_id: Mapped[int] = mapped_column(ForeignKey("tournaments.id", ondelete="CASCADE"))
     tournament: Mapped["Tournament"] = relationship(back_populates="reserved")
-
-
-# class TournamentsTeams(Base):
-#     """Many-to-many relationship"""
-#     __tablename__ = "tournaments_teams"
-#
-#     team_id: Mapped[int] = mapped_column(
-#         ForeignKey("teams.id", ondelete="CASCADE"),
-#         primary_key=True
-#     )
-#
-#     tournament_id: Mapped[int] = mapped_column(
-#         ForeignKey("tournaments.id", ondelete="CASCADE"),
-#         primary_key=True
-#     )
 
 
 class PaymentsTournament(Base):

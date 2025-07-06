@@ -1,17 +1,17 @@
-from typing import Any
+from typing import Any, List
 
 from aiogram import Router, types, F, Bot
 from aiogram.enums import ParseMode
 from aiogram.filters import or_f
 from aiogram.fsm.context import FSMContext
 
-from database.schemas import TeamUsers, User, Tournament
+from database.schemas import TeamUsers, User, Tournament, TournamentTeams
 from routers.middlewares import CheckPrivateMessageMiddleware, DatabaseMiddleware
 from routers import keyboards as kb, messages as ms
-from routers.fsm_states import RegNewTeamFSM
+from routers.fsm_states import RegNewTeamFSM, RegReserveTeamFSM
 from database.orm import AsyncOrm
 from routers import utils
-from routers.utils import calculate_team_points
+from routers.utils import calculate_team_points, convert_date_named_month
 from settings import settings
 
 router = Router()
@@ -69,9 +69,20 @@ async def user_tournament_handler(callback: types.CallbackQuery, session: Any, s
 
 # REG NEW TEAM
 @router.callback_query(F.data.split("_")[0] == "register-new-team")
-async def register_new_team(callback: types.CallbackQuery, state: FSMContext) -> None:
+async def register_new_team(callback: types.CallbackQuery, state: FSMContext, session: Any) -> None:
     """Регистрация новой команды"""
     tournament_id = int(callback.data.split("_")[1])
+    user = await AsyncOrm.get_user_by_tg_id(str(callback.from_user.id))
+    tournament = await AsyncOrm.get_tournament_by_id(tournament_id, session)
+
+    # проверяем допустимый ли уровень для создания команды
+    if user.level > tournament.level or user.level == 1:
+        msg = f"❗ Вы не можете участвовать в турнире уровня {settings.tournament_points[tournament.level][0]}"
+        await callback.message.edit_text(
+            msg,
+            reply_markup=kb.back_keyboard(f"user-tournament_{tournament_id}").as_markup()
+        )
+        return
 
     # начинаем state
     await state.set_state(RegNewTeamFSM.title)
@@ -110,16 +121,15 @@ async def get_team_title(message: types.Message, state: FSMContext, session: Any
     team_leader_id = str(message.from_user.id)
     user = await AsyncOrm.get_user_by_tg_id(team_leader_id)
 
-    # количество баллов капитана для создания команды
-    user_points = settings.user_points[user.gender][user.level]
+    tournament: Tournament = await AsyncOrm.get_tournament_by_id(tournament_id, session)
+    team_users: List[TeamUsers] = await AsyncOrm.get_teams_with_users(tournament_id, session)
 
     # Создаем новую команду
     try:
-        await AsyncOrm.create_new_team(
+        team_id = await AsyncOrm.create_new_team(
             tournament_id,
             team_title,
             user.id,
-            user_points,
             session
         )
     except Exception as e:
@@ -128,9 +138,25 @@ async def get_team_title(message: types.Message, state: FSMContext, session: Any
         return
 
     await state.clear()
-    keyboard = kb.back_to_tournament(tournament_id)
-    msg = f"✅ Команда <b>\"{team_title}\"</b> успешно зарегистрирована!"
-    await message.answer(msg, reply_markup=keyboard.as_markup())
+
+    # если мест для команды уже нет
+    if tournament.max_team_count <= len(team_users):
+        # записываем в таблицу резерва
+        try:
+            await AsyncOrm.create_reserve_team(team_id, tournament_id, session)
+            keyboard = kb.back_to_tournament(tournament_id)
+            msg = f"📝 Команда <b>\"{team_title}\"</b> зарегистрирована в резерв, так как количество команд на турнире уже максимальное."
+            await message.answer(msg, reply_markup=keyboard.as_markup())
+        except Exception:
+            await message.answer(f"Ошибка при создании команды", reply_markup=error_keyboard.as_markup())
+            await state.clear()
+            return
+
+    # если место для команды еще есть
+    else:
+        keyboard = kb.back_to_tournament(tournament_id)
+        msg = f"✅ Команда <b>\"{team_title}\"</b> успешно зарегистрирована!"
+        await message.answer(msg, reply_markup=keyboard.as_markup())
 
 
 # КАРТОЧКА КОМАНДЫ
@@ -144,7 +170,6 @@ async def team_card(callback: types.CallbackQuery, session: Any) -> None:
     user = await AsyncOrm.get_user_by_tg_id(tg_id)
     team = await AsyncOrm.get_team(team_id, session)
 
-    # TODO почему было закомментированно tournament???
     tournament: Tournament = await AsyncOrm.get_tournament_by_id(tournament_id, session)
     tournament_teams: list[TeamUsers] = await AsyncOrm.get_teams_with_users(tournament_id, session)
 
@@ -157,12 +182,12 @@ async def team_card(callback: types.CallbackQuery, session: Any) -> None:
         if user.id in [reg_user.id for reg_user in reg_team.users]:
             user_already_has_another_team = True
 
-    # Проверяем в этой ли команде пользователь, есть ли место и позволяют ли баллы
+    # Проверяем в этой ли команде пользователь
     user_already_in_team: bool = False
     if user.id in [reg_user.id for reg_user in team.users]:
         user_already_in_team = True
 
-    # если он не состоит ни в какой команде
+    # если он не состоит ни в какой команде, есть ли место и позволяют ли баллы
     over_points: bool = False
     over_players_count: bool = False
     wrong_level: bool = False
@@ -205,12 +230,12 @@ async def reg_user_in_team(callback: types.CallbackQuery, session: Any, bot: Bot
 
     # Отправляем сообщение капитану команды
     msg_for_leader = ms.message_for_team_leader(user, team, tournament)
-    keyboard = kb.yes_no_accept_user_in_team_keyboard(team_id, user.id)
+    keyboard = kb.yes_no_accept_user_in_team_keyboard(team_id, user.id, tournament_id)
 
     await bot.send_message(team_leader.tg_id, msg_for_leader, reply_markup=keyboard.as_markup())
 
-    keyboard = kb.back_keyboard(f"register-in-team_{team_id}_{tournament_id}")
-    await callback.message.edit_text("Запрос на вступление в команду отправлен капитану, дождитесь его подтверждения",
+    keyboard = kb.back_to_tournament(tournament_id)
+    await callback.message.edit_text("ℹ️ Запрос на вступление в команду отправлен капитану, дождитесь его подтверждения",
                                      reply_markup=keyboard.as_markup())
 
 
@@ -221,34 +246,68 @@ async def accept_refuse_user_in_team(callback: types.CallbackQuery, session: Any
     """Прием или отклонение заявки пользователя в команду"""
     team_id = int(callback.data.split("_")[1])
     user_id = int(callback.data.split("_")[2])
+    tournament_id = int(callback.data.split("_")[3])
 
     user: User = await AsyncOrm.get_user_by_id(user_id)
     team: TeamUsers = await AsyncOrm.get_team(team_id, session)
 
+    tournament: Tournament = await AsyncOrm.get_tournament_by_id(tournament_id, session)
+    tournament_teams: list[TeamUsers] = await AsyncOrm.get_teams_with_users(tournament_id, session)
+
+    # Проверяем зарегистрирован ли пользователь в какую нибудь из команд
+    user_already_has_another_team: bool = False
+    for reg_team in tournament_teams:
+        # Пропускаем текущую команду
+        if reg_team.team_id == team.team_id:
+            continue
+        if user.id in [reg_user.id for reg_user in reg_team.users]:
+            user_already_has_another_team = True
+
     # прием в команду
     if callback.data.split("_")[0] == "accept-user-in-team":
-        try:
-            await AsyncOrm.add_user_in_team(team_id, user_id, session)
-            msg_for_captain = f" ✅ <a href='tg://user?id={user.tg_id}'>{user.firstname} {user.lastname}</a> " \
-                              f"(ур. {settings.levels[user.level]}) добавлен в команду <b>{team.title}</b>"
-            msg_for_user = f"✅ Капитан команды добавил вас в команду \"{team.title}\""
+        team_users = team.users + [user]
+        team_points = calculate_team_points(team_users)
 
-        # при ошибке (поль-ль уже в команде, слишком много людей, команда удалена и тд.)
-        except Exception as e:
-            msg_for_captain = "Не удалось добавить пользователя в команду\n" \
-                              "Возможно в команде уже нет мест или команда удалена с турнира"
-            msg_for_user = f" ❌ Капитан команды не добавил вас в команду \"{team.title}\""
+        # проверка на количество участников в команде
+        if len(team.users) + 1 > tournament.max_team_players:
+            msg_for_captain = f"❌ Не удалось добавить пользователя в команду \"{team.title}\", так как команда уже заполнена"
+            msg_for_user = f" ❌ Капитан команды не добавил вас в команду, так как команда \"{team.title}\" уже заполнена"
+
+        # проверка на допустимый уровень
+        elif team_points > settings.tournament_points[tournament.level][1]:
+            msg_for_captain = f"❌ Не удалось добавить пользователя в команду \"{team.title}\", так как количество баллов команды будет превышать допустимое"
+            msg_for_user = f" ❌ Капитан команды не добавил вас в команду, так как количество баллов команды \"{team.title}\" будет превышать допустимое"
+
+        # Проверяем зарегистрирован ли пользователь в какую нибудь из команд
+        elif user_already_has_another_team:
+            msg_for_captain = f"❌ Не удалось добавить пользователя в команду \"{team.title}\", так как он уже состоит в другой команде на этом турнире"
+            msg_for_user = f" ❌ Капитан команды не добавил вас в команду \"{team.title}\", так как вы уже состоите в другой команде на этом турнире"
+
+        # пробуем записать в команду
+        else:
+            try:
+                await AsyncOrm.add_user_in_team(team_id, user_id, session)
+                msg_for_captain = f" ✅ <a href='tg://user?id={user.tg_id}'>{user.firstname} {user.lastname}</a> " \
+                                  f"({settings.levels[user.level]}) добавлен в команду <b>{team.title}</b>"
+                msg_for_user = f"✅ Капитан команды добавил вас в команду \"{team.title}\""
+
+            # при ошибке (поль-ль уже в команде, слишком много людей, команда удалена и тд.)
+            except Exception as e:
+                msg_for_captain = "Не удалось добавить пользователя в команду\n" \
+                                  "Возможно в команде уже нет мест или команда удалена с турнира"
+                msg_for_user = f" ❌ Капитан команды не добавил вас в команду \"{team.title}\""
 
     # отклонение
     else:
         msg_for_captain = f" ❌ Запрос <a href='tg://user?id={user.tg_id}'>{user.firstname} {user.lastname}</a> " \
-                          f"(ур. {settings.levels[user.level]}) в команду \"{team.title}\" <b>отклонен</b>"
+                          f"({settings.levels[user.level]}) в команду \"{team.title}\" <b>отклонен</b>"
         msg_for_user = f" ❌ Капитан команды не добавил вас в команду \"{team.title}\""
 
     # отвечаем капитану
     await callback.message.edit_text(msg_for_captain)
     # оповещаем пользователя
-    await bot.send_message(user.tg_id, msg_for_user)
+    keyboard = kb.back_to_tournament(tournament_id)
+    await bot.send_message(user.tg_id, msg_for_user, reply_markup=keyboard.as_markup())
 
 
 # LEAVE FROM TEAM
@@ -276,7 +335,7 @@ async def leave_from_team(callback: types.CallbackQuery, session: Any) -> None:
 
 
 @router.callback_query(or_f(F.data.split("_")[0] == "c-del-team", F.data.split("_")[0] == "del-team"))
-async def delete_team_from_tournament(callback: types.CallbackQuery, session: Any) -> None:
+async def delete_team_from_tournament(callback: types.CallbackQuery, session: Any, bot: Bot) -> None:
     """Удаление команды или пользователя с турнира"""
     team_id = int(callback.data.split("_")[1])
     tournament_id = int(callback.data.split("_")[2])
@@ -284,6 +343,7 @@ async def delete_team_from_tournament(callback: types.CallbackQuery, session: An
 
     user = await AsyncOrm.get_user_by_tg_id(tg_id)
     team: TeamUsers = await AsyncOrm.get_team(team_id, session)
+    tournament: Tournament = await AsyncOrm.get_tournament_by_id(tournament_id, session)
 
     keyboard = kb.back_keyboard(f"user-tournament_{tournament_id}")
 
@@ -293,6 +353,20 @@ async def delete_team_from_tournament(callback: types.CallbackQuery, session: An
             await AsyncOrm.delete_team_from_tournament(team_id, tg_id, session)
             await callback.message.edit_text(f"✅ Команда \"{team.title}\" удалена с турнира!", reply_markup=keyboard.as_markup())
 
+            # уведомление участников команды об удалении команды
+            for u in team.users:
+                # пропускаем капитана
+                if u.id == team.team_leader_id:
+                    continue
+
+                converted_date = convert_date_named_month(tournament.date)
+                msg = f"ℹ️ Капитан команды <a href='tg://user?id={user.tg_id}'>{user.firstname} {user.lastname}</a> удалил команду " \
+                  f"<b>{team.title}</b> с турнира \"{tournament.title}\" {converted_date}"
+                try:
+                    await bot.send_message(u.tg_id, msg)
+                except Exception:
+                    pass
+
         except:
             await callback.message.edit_text("Ошибка при удалении команды, попробуйте позже")
             return
@@ -300,20 +374,104 @@ async def delete_team_from_tournament(callback: types.CallbackQuery, session: An
     # Удаляем одного пользователя из команды
     else:
         try:
-            user_points = settings.user_points[user.gender][user.level]
-            await AsyncOrm.delete_user_from_team(team_id, user.id, user_points, session)
+            await AsyncOrm.delete_user_from_team(team_id, user.id, session)
             await callback.message.edit_text(
                 f"✅ Вы вышли из команды \"{team.title}\"!",
                 reply_markup=keyboard.as_markup()
             )
+
+            # уведомление капитана
+            captain = await AsyncOrm.get_user_by_id(team.team_leader_id)
+            converted_date = convert_date_named_month(tournament.date)
+            msg = f"ℹ️ Пользователь <a href='tg://user?id={user.tg_id}'>{user.firstname} {user.lastname}</a> вышел из команды " \
+                  f"<b>{team.title}</b> турнира \"{tournament.title}\" {converted_date}"
+            try:
+                await bot.send_message(captain.tg_id, msg)
+            except Exception:
+                pass
 
         except:
             await callback.message.edit_text("Ошибка при выходе из команды, попробуйте позже")
             return
 
 
+# RESERVE
+@router.callback_query(F.data.split("_")[0] == "register-reserve-team")
+async def reg_team_in_reserve(callback: types.CallbackQuery, state: FSMContext, session: Any) -> None:
+    """Начало записи команды в резерв"""
+    tournament_id = int(callback.data.split("_")[1])
+    user = await AsyncOrm.get_user_by_tg_id(str(callback.from_user.id))
+    tournament = await AsyncOrm.get_tournament_by_id(tournament_id, session)
+
+    # проверяем допустимый ли уровень для создания команды
+    if user.level > tournament.level or user.level == 1:
+        msg = f"❗ Вы не можете участвовать в турнире уровня {settings.tournament_points[tournament.level][0]}"
+        await callback.message.edit_text(
+            msg,
+            reply_markup=kb.back_keyboard(f"user-tournament_{tournament_id}").as_markup()
+        )
+        return
+
+    # начинаем state
+    await state.set_state(RegReserveTeamFSM.title)
+
+    keyboard = kb.back_keyboard(f"user-tournament_{tournament_id}")
+    message = "Введите название команды"
+
+    prev_message = await callback.message.edit_text(message, reply_markup=keyboard.as_markup())
+
+    await state.update_data(prev_message=prev_message)
+    await state.update_data(tournament_id=tournament_id)
 
 
+@router.message(RegReserveTeamFSM.title)
+async def get_team_title(message: types.Message, state: FSMContext, session: Any) -> None:
+    """Получаем название команды"""
+    data = await state.get_data()
+    tournament_id = data["tournament_id"]
+
+    # Удаляем предыдущее сообщение
+    try:
+        await data["prev_message"].delete()
+    except:
+        pass
+
+    error_keyboard = kb.back_keyboard(f"user-tournament_{tournament_id}")
+
+    # Проверяем название команды
+    try:
+        team_title = message.text
+    except:
+        await message.answer("Некорректное название команды, попробуйте еще раз",
+                             reply_markup=error_keyboard.as_markup())
+        return
+
+    team_leader_id = str(message.from_user.id)
+    user = await AsyncOrm.get_user_by_tg_id(team_leader_id)
+
+    # Создаем новую команду и добавляем ее в резерв
+    try:
+        team_id = await AsyncOrm.create_new_team(
+            tournament_id,
+            team_title,
+            user.id,
+            session
+        )
+        # записываем в таблицу резерва
+        await AsyncOrm.create_reserve_team(
+            team_id,
+            tournament_id,
+            session
+        )
+    except Exception as e:
+        await message.answer(f"Ошибка при создании команды", reply_markup=error_keyboard.as_markup())
+        await state.clear()
+        return
+
+    await state.clear()
+    keyboard = kb.back_to_tournament(tournament_id)
+    msg = f"📝 Команда <b>\"{team_title}\"</b> успешно зарегистрирована в резерв!"
+    await message.answer(msg, reply_markup=keyboard.as_markup())
 
 
 

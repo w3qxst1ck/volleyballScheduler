@@ -1,6 +1,6 @@
 from typing import List
 
-from database.schemas import User, EventRel, Event, PaymentsEventsUsers, Payment, ReservedUser, Tournament, Team, \
+from database.schemas import User, EventRel, Event, PaymentsEventsUsers, Payment, ReservedUser, Tournament, \
     TeamUsers
 from routers.utils import convert_date, convert_time, convert_date_named_month, calculate_team_points
 from settings import settings
@@ -278,7 +278,7 @@ def team_card(team: TeamUsers, user_already_in_team, user_already_has_another_te
 def message_for_team_leader(user: User, team: TeamUsers, tournament: Tournament) -> str:
     """Оповещение капитана о принятии игрока в команду"""
     converted_date = convert_date_named_month(tournament.date)
-    message = f"<a href='tg://user?id={user.tg_id}'>{user.firstname} {user.lastname}</a> (ур. {settings.levels[user.level]}) " \
+    message = f"<a href='tg://user?id={user.tg_id}'>{user.firstname} {user.lastname}</a> ({settings.levels[user.level]}) " \
               f"хочет присоединиться к вашей команде <b>{team.title}</b> на турнир \"{tournament.title}\" {converted_date}\n\n"\
               f"Добавить игрока в команду?"
 

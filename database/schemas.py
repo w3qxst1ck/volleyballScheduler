@@ -58,28 +58,18 @@ class Reserved(BaseModel):
 
 
 class ReservedEvent(Reserved):
-    # user: User
     event: Event
 
 
 class ReservedUser(Reserved):
     user: User
-    # event: Event
-
-
-class Team(BaseModel):
-    id: int
-    title: str
-    level: int
-    team_leader_id: int
-    tournament_id: int
 
 
 class TeamUsers(BaseModel):
     team_id: int
     title: str
-    team_level: int
     team_leader_id: int
+    team_libero_id: int | None = None
     users: list[User]
 
 
