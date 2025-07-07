@@ -27,38 +27,42 @@ def user_profile_message(user: User) -> str:
 
 
 # карточка для чемпионатов
-def tournament_card_for_user_message(event: Tournament, teams_users: list[TeamUsers]) -> str:
+def tournament_card_for_user_message(event: Tournament, main_teams: list[TeamUsers], reserve_teams: list[TeamUsers]) -> str:
     """Информация о чемпионате с его командами"""
     date = convert_date_named_month(event.date)
     time = convert_time(event.date)
     weekday = settings.weekdays[datetime.datetime.weekday(event.date)]
 
-    # формируем и сортируем команды
-    ordered_teams = [team for team in sorted(teams_users, key=lambda x: x.title)]
-
     # количество команд
-    teams_count = len(teams_users)
+    teams_count = len(main_teams)
+    available_places = event.max_team_count - teams_count
+    max_points = settings.tournament_points[event.level][0]
 
     message = f"📅 <b>{date}, {time} ({weekday})</b>\n"
-    message += f"🏆 <b>\"{event.type}\"</b> ({settings.tournament_points[event.level][0]})\n" \
+    message += f"🏆 <b>\"{event.type}\"</b> ({max_points})\n" \
                f"  • {event.title}\n" \
                f"  • <b>Максимальное кол-во баллов команды:</b> {settings.tournament_points[event.level][1]}\n" \
                f"💰 <b>Стоимость участия для команды:</b> {event.price} руб.\n\n" \
-               f"👥 <b>Количество команд:</b> {teams_count}/{event.max_team_count} (доступно {event.max_team_count - teams_count} мест)\n" \
+               f"👥 <b>Количество команд:</b> {teams_count}/{event.max_team_count} (доступно {available_places} мест)\n" \
                f"👥 <b>Количество участников в команде:</b> {event.min_team_players}-{event.max_team_players}\n" \
                f"⚠️ <b>Минимальное количество команд:</b> {event.min_team_count}\n" \
                f"📍 <b>Адрес:</b> <a href='https://yandex.ru/navi/org/volleyball_city/9644230187/?ll=30.333934%2C59.993168&z=16'>{settings.address}</a>\n\n"
 
-    if ordered_teams:
-        count = 1
+    if main_teams:
         message += "<b>Зарегистрированные команды:</b>\n"
 
-        for team in ordered_teams:
+        for count, team in enumerate(main_teams, start=1):
             # баллы команды
             team_points = calculate_team_points(team.users)
-
             message += f"{count}. \"{team.title}\" (баллов: {team_points})\n"
-            count += 1
+
+    if reserve_teams:
+        message += "\n<b>Резервные команды:</b>\n"
+
+        for count, team in enumerate(reserve_teams, start=1):
+            # баллы команды
+            team_points = calculate_team_points(team.users)
+            message += f"{count}. \"{team.title}\" (баллов: {team_points})\n"
 
     return message
 

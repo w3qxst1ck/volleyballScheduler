@@ -6,9 +6,10 @@ from aiogram.filters import or_f
 from aiogram.fsm.context import FSMContext
 
 from database.schemas import TeamUsers, User, Tournament, TournamentTeams
+from logger import logger
 from routers.middlewares import CheckPrivateMessageMiddleware, DatabaseMiddleware
 from routers import keyboards as kb, messages as ms
-from routers.fsm_states import RegNewTeamFSM, RegReserveTeamFSM
+from routers.fsm_states import RegNewTeamFSM
 from database.orm import AsyncOrm
 from routers import utils
 from routers.utils import calculate_team_points, convert_date_named_month
@@ -53,7 +54,19 @@ async def user_tournament_handler(callback: types.CallbackQuery, session: Any, s
 
     teams_users: list[TeamUsers] = await AsyncOrm.get_teams_with_users(tournament_id, session)
 
-    msg = ms.tournament_card_for_user_message(tournament, teams_users)
+    # разбиение на основные и резервные команды
+    main_teams = []
+    reserve_teams = []
+    for team in teams_users:
+        if team.reserve:
+            reserve_teams.append(team)
+        else:
+            main_teams.append(team)
+
+    # сортируем основные команды
+    main_teams = [team for team in sorted(main_teams, key=lambda x: x.title)]
+
+    msg = ms.tournament_card_for_user_message(tournament, main_teams, reserve_teams)
 
     await callback.message.edit_text(
         msg,
@@ -62,13 +75,14 @@ async def user_tournament_handler(callback: types.CallbackQuery, session: Any, s
             tournament,
             user.id,
             f"events-date_{utils.convert_date(tournament.date)}",
-            teams_users
+            main_teams,
+            reserve_teams
         ).as_markup()
     )
 
 
 # REG NEW TEAM
-@router.callback_query(F.data.split("_")[0] == "register-new-team")
+@router.callback_query(or_f(F.data.split("_")[0] == "register-new-team", F.data.split("_")[0] == "register-reserve-team"))
 async def register_new_team(callback: types.CallbackQuery, state: FSMContext, session: Any) -> None:
     """Регистрация новой команды"""
     tournament_id = int(callback.data.split("_")[1])
@@ -86,6 +100,12 @@ async def register_new_team(callback: types.CallbackQuery, state: FSMContext, se
 
     # начинаем state
     await state.set_state(RegNewTeamFSM.title)
+
+    # помечаем если резерв
+    if callback.data.split("_")[0] == "register-reserve-team":
+        await state.update_data(reserve=True)
+    else:
+        await state.update_data(reserve=False)
 
     keyboard = kb.back_keyboard(f"user-tournament_{tournament_id}")
     message = "Введите название команды"
@@ -123,13 +143,23 @@ async def get_team_title(message: types.Message, state: FSMContext, session: Any
 
     tournament: Tournament = await AsyncOrm.get_tournament_by_id(tournament_id, session)
     team_users: List[TeamUsers] = await AsyncOrm.get_teams_with_users(tournament_id, session)
+    to_reserve = data["reserve"]
+
+    # если мест для команды уже нет
+    if tournament.max_team_count <= len(team_users) or to_reserve:
+        msg = f"📝 Команда <b>\"{team_title}\"</b> зарегистрирована в резерв, так как количество команд на турнире уже максимальное."
+
+    # если места еще есть
+    else:
+        msg = f"✅ Команда <b>\"{team_title}\"</b> успешно зарегистрирована!"
 
     # Создаем новую команду
     try:
-        team_id = await AsyncOrm.create_new_team(
+        await AsyncOrm.create_new_team(
             tournament_id,
             team_title,
             user.id,
+            to_reserve,
             session
         )
     except Exception as e:
@@ -139,24 +169,8 @@ async def get_team_title(message: types.Message, state: FSMContext, session: Any
 
     await state.clear()
 
-    # если мест для команды уже нет
-    if tournament.max_team_count <= len(team_users):
-        # записываем в таблицу резерва
-        try:
-            await AsyncOrm.create_reserve_team(team_id, tournament_id, session)
-            keyboard = kb.back_to_tournament(tournament_id)
-            msg = f"📝 Команда <b>\"{team_title}\"</b> зарегистрирована в резерв, так как количество команд на турнире уже максимальное."
-            await message.answer(msg, reply_markup=keyboard.as_markup())
-        except Exception:
-            await message.answer(f"Ошибка при создании команды", reply_markup=error_keyboard.as_markup())
-            await state.clear()
-            return
-
-    # если место для команды еще есть
-    else:
-        keyboard = kb.back_to_tournament(tournament_id)
-        msg = f"✅ Команда <b>\"{team_title}\"</b> успешно зарегистрирована!"
-        await message.answer(msg, reply_markup=keyboard.as_markup())
+    keyboard = kb.back_to_tournament(tournament_id)
+    await message.answer(msg, reply_markup=keyboard.as_markup())
 
 
 # КАРТОЧКА КОМАНДЫ
@@ -354,16 +368,40 @@ async def delete_team_from_tournament(callback: types.CallbackQuery, session: An
             await callback.message.edit_text(f"✅ Команда \"{team.title}\" удалена с турнира!", reply_markup=keyboard.as_markup())
 
             # уведомление участников команды об удалении команды
+            converted_date = convert_date_named_month(tournament.date)
+            msg = f"ℹ️ Капитан команды <a href='tg://user?id={user.tg_id}'>{user.firstname} {user.lastname}</a> удалил команду " \
+              f"<b>{team.title}</b> с турнира \"{tournament.title}\" {converted_date}"
             for u in team.users:
                 # пропускаем капитана
                 if u.id == team.team_leader_id:
                     continue
 
-                converted_date = convert_date_named_month(tournament.date)
-                msg = f"ℹ️ Капитан команды <a href='tg://user?id={user.tg_id}'>{user.firstname} {user.lastname}</a> удалил команду " \
-                  f"<b>{team.title}</b> с турнира \"{tournament.title}\" {converted_date}"
                 try:
                     await bot.send_message(u.tg_id, msg)
+                except Exception:
+                    pass
+
+            # берем команду из резерва если они есть (при удалении основной команды)
+            if team.reserve is False:
+                try:
+                    # получаем команду
+                    reserve_team: TeamUsers = await AsyncOrm.get_first_reserve_team(tournament_id, session)
+
+                    # меняем reserve на False
+                    if reserve_team:
+                        await AsyncOrm.transfer_team_from_reserve(reserve_team.team_id, session)
+
+                        # оповещение участников команды переведенной из резерва
+                        converted_date = convert_date_named_month(tournament.date)
+                        msg = f"ℹ️ Ваша команда <b>{reserve_team.title}</b> переведена в основные команды турнира \"{tournament.title}\" {converted_date} " \
+                              f"в связи с появлением свободного места."
+
+                        for u in reserve_team.users:
+                            try:
+                                await bot.send_message(u.tg_id, msg)
+                            except Exception:
+                                pass
+
                 except Exception:
                     pass
 
@@ -394,84 +432,6 @@ async def delete_team_from_tournament(callback: types.CallbackQuery, session: An
             await callback.message.edit_text("Ошибка при выходе из команды, попробуйте позже")
             return
 
-
-# RESERVE
-@router.callback_query(F.data.split("_")[0] == "register-reserve-team")
-async def reg_team_in_reserve(callback: types.CallbackQuery, state: FSMContext, session: Any) -> None:
-    """Начало записи команды в резерв"""
-    tournament_id = int(callback.data.split("_")[1])
-    user = await AsyncOrm.get_user_by_tg_id(str(callback.from_user.id))
-    tournament = await AsyncOrm.get_tournament_by_id(tournament_id, session)
-
-    # проверяем допустимый ли уровень для создания команды
-    if user.level > tournament.level or user.level == 1:
-        msg = f"❗ Вы не можете участвовать в турнире уровня {settings.tournament_points[tournament.level][0]}"
-        await callback.message.edit_text(
-            msg,
-            reply_markup=kb.back_keyboard(f"user-tournament_{tournament_id}").as_markup()
-        )
-        return
-
-    # начинаем state
-    await state.set_state(RegReserveTeamFSM.title)
-
-    keyboard = kb.back_keyboard(f"user-tournament_{tournament_id}")
-    message = "Введите название команды"
-
-    prev_message = await callback.message.edit_text(message, reply_markup=keyboard.as_markup())
-
-    await state.update_data(prev_message=prev_message)
-    await state.update_data(tournament_id=tournament_id)
-
-
-@router.message(RegReserveTeamFSM.title)
-async def get_team_title(message: types.Message, state: FSMContext, session: Any) -> None:
-    """Получаем название команды"""
-    data = await state.get_data()
-    tournament_id = data["tournament_id"]
-
-    # Удаляем предыдущее сообщение
-    try:
-        await data["prev_message"].delete()
-    except:
-        pass
-
-    error_keyboard = kb.back_keyboard(f"user-tournament_{tournament_id}")
-
-    # Проверяем название команды
-    try:
-        team_title = message.text
-    except:
-        await message.answer("Некорректное название команды, попробуйте еще раз",
-                             reply_markup=error_keyboard.as_markup())
-        return
-
-    team_leader_id = str(message.from_user.id)
-    user = await AsyncOrm.get_user_by_tg_id(team_leader_id)
-
-    # Создаем новую команду и добавляем ее в резерв
-    try:
-        team_id = await AsyncOrm.create_new_team(
-            tournament_id,
-            team_title,
-            user.id,
-            session
-        )
-        # записываем в таблицу резерва
-        await AsyncOrm.create_reserve_team(
-            team_id,
-            tournament_id,
-            session
-        )
-    except Exception as e:
-        await message.answer(f"Ошибка при создании команды", reply_markup=error_keyboard.as_markup())
-        await state.clear()
-        return
-
-    await state.clear()
-    keyboard = kb.back_to_tournament(tournament_id)
-    msg = f"📝 Команда <b>\"{team_title}\"</b> успешно зарегистрирована в резерв!"
-    await message.answer(msg, reply_markup=keyboard.as_markup())
 
 
 

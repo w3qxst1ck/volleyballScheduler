@@ -194,16 +194,15 @@ def my_event_card_keyboard(payment: Payment, reserved_event: bool = False) -> In
     return keyboard
 
 
-def tournament_card_keyboard(tournament: Tournament, user_id: int, back_to: str, teams: list[TeamUsers]) -> InlineKeyboardBuilder:
+def tournament_card_keyboard(tournament: Tournament, user_id: int, back_to: str, main_teams: list[TeamUsers],
+                             reserve_teams: list[TeamUsers]) -> InlineKeyboardBuilder:
     """Зарегистрироваться на чемпионат"""
     keyboard = InlineKeyboardBuilder()
-
-    # Сортируем по названию команды
-    ordered_teams = [team for team in sorted(teams, key=lambda x: x.title)]
     user_already_has_team: bool = False
 
-    if ordered_teams:
-        for team in ordered_teams:
+    # кнопки основных команд
+    if main_teams:
+        for team in main_teams:
             # Проверяем зарегистрирован ли пользователь
             registered = ""
             registered_users = [user.id for user in team.users]
@@ -213,10 +212,22 @@ def tournament_card_keyboard(tournament: Tournament, user_id: int, back_to: str,
 
             keyboard.row(InlineKeyboardButton(text=f"{registered}{team.title}", callback_data=f"register-in-team_{team.team_id}_{tournament.id}"))
 
+    # кнопки резервных команд
+    if reserve_teams:
+        for team in reserve_teams:
+            # Проверяем зарегистрирован ли пользователь
+            registered = ""
+            registered_users = [user.id for user in team.users]
+            if user_id in registered_users:
+                registered = "✅️ "
+                user_already_has_team = True
+
+            keyboard.row(InlineKeyboardButton(text=f"{registered}{team.title} (резерв)", callback_data=f"register-in-team_{team.team_id}_{tournament.id}"))
+
     # проверка не состоит ли участник в другой команде
     if not user_already_has_team:
         # проверка свободных мест для команд
-        if len(teams) < tournament.max_team_count:
+        if len(main_teams) < tournament.max_team_count:
             keyboard.row(InlineKeyboardButton(text=f"✍️ Зарегистрировать команду", callback_data=f"register-new-team_{tournament.id}"))
         else:
             keyboard.row(InlineKeyboardButton(text=f"📝 Записать команду в резерв", callback_data=f"register-reserve-team_{tournament.id}"))

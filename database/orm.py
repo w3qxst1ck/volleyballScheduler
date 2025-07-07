@@ -608,13 +608,14 @@ class AsyncOrm:
         try:
             rows = await session.fetch(
                 """
-                SELECT t.id AS team_id, t.title AS title, t.team_leader_id as team_leader_id, 
+                SELECT t.id AS team_id, t.title AS title, t.team_leader_id as team_leader_id, t.created_at, t.reserve,
                 u.id AS user_id, u.tg_id AS tg_id, u.username AS username, u.firstname AS firstname, u.gender,
                 u.lastname AS lastname, u.level AS user_level 
                 FROM teams AS t
                 JOIN teams_users AS tu ON t.id = tu.team_id
                 JOIN users AS u ON tu.user_id=u.id
                 WHERE t.tournament_id = $1
+                ORDER BY t.created_at
                 """,
                 tournament_id
             )
@@ -647,6 +648,8 @@ class AsyncOrm:
                         team_id=row["team_id"],
                         title=row["title"],
                         team_leader_id=row["team_leader_id"],
+                        created_at=row["created_at"],
+                        reserve=row["reserve"],
                         users=teams_users[row["title"]]
                     ))
                     used_teams.append(row["title"])
@@ -662,7 +665,7 @@ class AsyncOrm:
         try:
             rows = await session.fetch(
                 """
-                SELECT t.id AS team_id, t.title AS title, t.team_leader_id as team_leader_id, 
+                SELECT t.id AS team_id, t.title AS title, t.team_leader_id as team_leader_id, t.created_at, t.reserve,
                 u.id AS user_id, u.tg_id AS tg_id, u.username AS username, u.firstname AS firstname, 
                 u.lastname AS lastname, u.level AS user_level, u.gender
                 FROM teams AS t
@@ -701,6 +704,8 @@ class AsyncOrm:
                         team_id=row["team_id"],
                         title=row["title"],
                         team_leader_id=row["team_leader_id"],
+                        created_at=row["created_at"],
+                        reserve=row["reserve"],
                         users=teams_users[row["title"]]
                     ))
                     used_teams.append(row["title"])
@@ -711,18 +716,18 @@ class AsyncOrm:
             logger.error(f"Ошибка при получении команды с игроками {team_id}: {e}")
 
     @staticmethod
-    async def create_new_team(tournament_id: int, title: str, team_leader_id: int, session: Any) -> int:
+    async def create_new_team(tournament_id: int, title: str, team_leader_id: int, reserve: bool, session: Any) -> int:
         """Создаем новую команду для турнира"""
         try:
             async with session.transaction():
                 # Создаем команду
                 team_id = await session.fetchval(
                     """
-                    INSERT INTO teams(title, team_leader_id, tournament_id)
-                    VALUES($1, $2, $3)
+                    INSERT INTO teams(title, team_leader_id, tournament_id, reserve)
+                    VALUES($1, $2, $3, $4)
                     RETURNING id
                     """,
-                    title, team_leader_id, tournament_id
+                    title, team_leader_id, tournament_id, reserve
                 )
                 # Добавляем в команду пользователя
                 await session.execute(
@@ -732,6 +737,9 @@ class AsyncOrm:
                     """,
                     team_leader_id, team_id
                 )
+
+                logger.info(f"Пользователь id {team_leader_id} создал команду {title} {' в резерве ' if reserve else ''}"
+                            f"турнир id {tournament_id}")
                 return team_id
 
         except Exception as e:
@@ -821,20 +829,70 @@ class AsyncOrm:
             raise
 
     @staticmethod
-    async def create_reserve_team(team_id: int, tournament_id: int, session: Any) -> None:
-        """Создание команды в резерве"""
-        date = datetime.datetime.now()
+    async def get_first_reserve_team(tournament_id: int, session: Any) -> TeamUsers | None:
+        """Получение первой команды из резерва"""
+        try:
+            rows = await session.fetch(
+                """
+                SELECT t.id AS team_id, t.title AS title, t.team_leader_id as team_leader_id, t.created_at, t.reserve,
+                u.id AS user_id, u.tg_id AS tg_id, u.username AS username, u.firstname AS firstname, u.gender,
+                u.lastname AS lastname, u.level AS user_level 
+                FROM teams AS t
+                JOIN teams_users AS tu ON t.id = tu.team_id
+                JOIN users AS u ON tu.user_id=u.id
+                WHERE t.tournament_id = $1 AND reserve = true
+                ORDER BY t.created_at
+                """,
+                tournament_id
+            )
+            if rows:
+                result = []
+
+                # Разбиваем пользователей по командам
+                teams_users = {}
+                for row in rows:
+                    user = User(id=row["user_id"], tg_id=row["tg_id"], username=row["username"], firstname=row["firstname"],
+                        lastname=row["lastname"], level=row["user_level"], gender=row["gender"])
+                    if row["title"] in teams_users.keys():
+                        teams_users[row["title"]].append(user)
+                    else:
+                        teams_users[row["title"]] = [user]
+
+                # Формируем модель TeamUsers
+                used_teams = []
+                for row in rows:
+                    if row["title"] in used_teams:
+                        continue
+                    else:
+                        result.append(
+                            TeamUsers(team_id=row["team_id"], title=row["title"], team_leader_id=row["team_leader_id"],
+                                created_at=row["created_at"], reserve=row["reserve"], users=teams_users[row["title"]]))
+                        used_teams.append(row["title"])
+
+                return result[0]
+
+            else:
+                return None
+
+        except Exception as e:
+            logger.error(f"Ошибка при получении первой резервной команды с игроками, турнир id {tournament_id}: {e}")
+
+    @staticmethod
+    async def transfer_team_from_reserve(team_id: int, session: Any) -> None:
+        """Изменение статуса команды с резерва на основу"""
         try:
             await session.execute(
                 """
-                INSERT INTO reserved_tournaments (team_id, tournament_id, date)
-                VALUES ($1, $2, $3)
+                UPDATE teams
+                SET reserve = false
+                WHERE id = $1
                 """,
-                team_id, tournament_id, date
+                team_id
             )
-
-            logger.info(f"Команда с id {team_id} записана в резерв")
+            logger.info(f"Команда id {team_id} переведена в основу")
 
         except Exception as e:
-            logger.error(f"Ошибка при создании команды с id {team_id} в резерв")
-            raise
+            logger.error(f"Ошибка при переводе команды id {team_id} в основу: {e}")
+
+
+

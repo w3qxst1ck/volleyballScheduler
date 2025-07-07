@@ -70,6 +70,8 @@ class TeamUsers(BaseModel):
     title: str
     team_leader_id: int
     team_libero_id: int | None = None
+    created_at: datetime.datetime
+    reserve: bool
     users: list[User]
 
 
