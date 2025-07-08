@@ -47,25 +47,34 @@ def events_keyboard(events: list[EventRel | Tournament],
     sorted_events = sorted(events, key=lambda e: e.date)
 
     for event in sorted_events:
-        # для чемпионатов
-        if type(event) == TournamentTeams:
-            teams = [team.users for team in event.teams]
-            registered_users = []
-            for reg_users in teams:
-                for reg_user in reg_users:
-                    registered_users.append(reg_user.id)
 
-            registered = ""
-            if user.id in registered_users:
+        # для турниров
+        if type(event) == TournamentTeams:
+            # делим пользователей на основных и резервных
+            main_users_id = []
+            reserve_users_id = []
+            for team in event.teams:
+                for team_user in team.users:
+                    if team.reserve:
+                        reserve_users_id.append(team_user.id)
+                    else:
+                        main_users_id.append(team_user.id)
+
+            if user.id in main_users_id:
                 registered = "✅️ "
 
-            # TODO add reserved
+            elif user.id in reserve_users_id:
+                registered = "📝 "
+
+            else:
+                registered = ""
 
             time = event.date.time().strftime("%H:%M")
 
             keyboard.row(InlineKeyboardButton(text=f"{registered}{time} 🏆 {event.type}",
                                               callback_data=f"user-tournament_{event.id}"))
 
+        # для всех событий кроме турниров
         elif type(event) == EventRel:
             time = event.date.time().strftime("%H:%M")
 
@@ -290,6 +299,25 @@ def payment_confirm_keyboard(user: User, event: Event, to_reserve: bool = False)
     return keyboard
 
 
+def payment_tournament_confirm_keyboard(team_id: int, tournament_id: int, to_reserve: bool) -> InlineKeyboardBuilder:
+    """Клавиатура с кнопкой подтверждения оплаты для турниров"""
+    keyboard = InlineKeyboardBuilder()
+
+    if to_reserve:
+        keyboard.row(InlineKeyboardButton(
+            text="Оплатил(а)", callback_data=f"t-paid-reserve_{team_id}_{tournament_id}"
+        ))
+    else:
+        keyboard.row(
+            InlineKeyboardButton(
+                text="Оплатил(а)", callback_data=f"t-paid_{team_id}_{tournament_id}")
+        )
+
+    keyboard.row(InlineKeyboardButton(text="🔙 назад", callback_data=f"register-in-team_{team_id}_{tournament_id}"))
+
+    return keyboard
+
+
 def main_keyboard_or_my_events() -> InlineKeyboardBuilder:
     """Клавиатура для возвращения в Главное меню или в Мои мероприятия"""
     keyboard = InlineKeyboardBuilder()
@@ -444,26 +472,34 @@ def back_to_tournament(tournament_id: int) -> InlineKeyboardBuilder:
 
 
 def team_card_keyboard(tournament_id: int, team_id: int, user_already_in_team: bool,
-                       user_already_has_another_team: bool, over_points: bool,
-                       over_players_count: bool, wrong_level: bool) -> InlineKeyboardBuilder:
+                       user_already_has_another_team: bool, user_is_team_leader: bool,
+                       over_points: bool, over_players_count: bool, wrong_level: bool) -> InlineKeyboardBuilder:
     """
     Клавиатура карточки команды
     user_already_in_team: bool - пользователь уже в этой команде
     user_already_has_another_team: bool - пользователь уже в другой команде на этом турнире
+    user_is_team_leader: bool - является ли пользователь капитаном команды
     over_points: bool - количество баллов команды с пользователем превысит лимит
     over_players_count: bool - количество игроков команды с пользователем превысит лимит
     wrong_level: bool - неподходящий уровень для турнира
     """
     keyboard = InlineKeyboardBuilder()
 
+    if user_is_team_leader:
+        # TODO обработать случай с созданным платежем, подтвержденным платежом
+        keyboard.row(InlineKeyboardButton(text="Внести оплату",
+                                          callback_data=f"pay-for-team_{team_id}_{tournament_id}"))
+
     # Если пользователь еще не в команде, у него нет другой команды
     # и суммарное количество баллов не будет превышать лимит
     if not user_already_in_team and not user_already_has_another_team and not over_points and not over_players_count \
             and not wrong_level:
-        keyboard.row(InlineKeyboardButton(text="Записаться в команду", callback_data=f"reg-user-in-team_{team_id}_{tournament_id}"))
+        keyboard.row(InlineKeyboardButton(text="Записаться в команду",
+                                          callback_data=f"reg-user-in-team_{team_id}_{tournament_id}"))
     # Если уже зарегистрирован
     elif user_already_in_team:
-        keyboard.row(InlineKeyboardButton(text="Выйти из команды", callback_data=f"leave-user-from-team_{team_id}_{tournament_id}"))
+        keyboard.row(InlineKeyboardButton(text="Выйти из команды",
+                                          callback_data=f"leave-user-from-team_{team_id}_{tournament_id}"))
 
     keyboard.row(InlineKeyboardButton(text="🔙 назад", callback_data=f"user-tournament_{tournament_id}"))
 
@@ -498,7 +534,7 @@ def yes_no_accept_user_in_team_keyboard(team_id: int, user_id: int, tournament_i
     keyboard.row(InlineKeyboardButton(text="Да",
                                       callback_data=f"accept-user-in-team_{team_id}_{user_id}_{tournament_id}"))
     keyboard.row(InlineKeyboardButton(text="Нет",
-                                      callback_data=f"refuse-user-in-team_{team_id}_{user_id}"))
+                                      callback_data=f"refuse-user-in-team_{team_id}_{user_id}_{tournament_id}"))
     return keyboard
 
 

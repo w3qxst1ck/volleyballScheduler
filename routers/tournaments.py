@@ -176,7 +176,7 @@ async def get_team_title(message: types.Message, state: FSMContext, session: Any
 # КАРТОЧКА КОМАНДЫ
 @router.callback_query(F.data.split("_")[0] == "register-in-team")
 async def team_card(callback: types.CallbackQuery, session: Any) -> None:
-    """Запись в существующую команду"""
+    """Карточка команды"""
     team_id = int(callback.data.split("_")[1])
     tournament_id = int(callback.data.split("_")[2])
     tg_id = str(callback.from_user.id)
@@ -201,6 +201,11 @@ async def team_card(callback: types.CallbackQuery, session: Any) -> None:
     if user.id in [reg_user.id for reg_user in team.users]:
         user_already_in_team = True
 
+    # проверяем капитан ли пользователь
+    user_is_team_leader: bool = False
+    if team.team_leader_id == user.id:
+        user_is_team_leader = True
+
     # если он не состоит ни в какой команде, есть ли место и позволяют ли баллы
     over_points: bool = False
     over_players_count: bool = False
@@ -223,7 +228,7 @@ async def team_card(callback: types.CallbackQuery, session: Any) -> None:
     message = ms.team_card(team, user_already_in_team, user_already_has_another_team, over_points, over_players_count,
                            wrong_level)
     keyboard = kb.team_card_keyboard(tournament_id, team_id, user_already_in_team, user_already_has_another_team,
-                                     over_points, over_players_count, wrong_level)
+                                     user_is_team_leader, over_points, over_players_count, wrong_level)
     await callback.message.edit_text(message, reply_markup=keyboard.as_markup())
 
 
@@ -307,8 +312,8 @@ async def accept_refuse_user_in_team(callback: types.CallbackQuery, session: Any
 
             # при ошибке (поль-ль уже в команде, слишком много людей, команда удалена и тд.)
             except Exception as e:
-                msg_for_captain = "Не удалось добавить пользователя в команду\n" \
-                                  "Возможно в команде уже нет мест или команда удалена с турнира"
+                msg_for_captain = "❌ Не удалось добавить пользователя в команду.\n" \
+                                  "Возможно в команде уже нет мест, команда удалена с турнира или игрок уже в команде"
                 msg_for_user = f" ❌ Капитан команды не добавил вас в команду \"{team.title}\""
 
     # отклонение

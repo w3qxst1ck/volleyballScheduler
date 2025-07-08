@@ -581,22 +581,6 @@ async def update_gender(callback: types.CallbackQuery, session: Any) -> None:
     await callback.message.edit_text(msg, reply_markup=keyboard.as_markup())
 
 
-@router.message(Command("test"))
-async def help_handler(message: types.Message) -> None:
-    """test message"""
-    # user = await AsyncOrm.get_user_by_tg_id(str(message.from_user.id))
-    # reserved_events = await AsyncOrm.get_reserved_events_by_user_id(user.id)
-    # print(reserved_events)
-    # for event in reserved_events:
-    #     # await message.answer(f"{event.id} | {event.date} | {event.event.id} | {event.user.id}")
-    #     await message.answer(f"{event.id} | {event.date} | {event.event.id}")
-
-    reserved_users = await AsyncOrm.get_reserved_users_by_event_id(2)
-    print(reserved_users)
-    for reserve in reserved_users:
-        await message.answer(f"{reserve.id} | {reserve.date} | {reserve.user.id}")
-
-
 # HELP
 @router.message(Command("help"))
 async def help_handler(message: types.Message) -> None:
