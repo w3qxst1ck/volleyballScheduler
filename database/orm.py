@@ -894,5 +894,21 @@ class AsyncOrm:
         except Exception as e:
             logger.error(f"Ошибка при переводе команды id {team_id} в основу: {e}")
 
+    @staticmethod
+    async def create_tournament_payment(team_id: int, tournament_id: int, session: Any) -> None:
+        """Создание платежа после подтверждения пользователем"""
+        try:
+            await session.execute(
+                """
+                INSERT INTO tournament_payments (paid, paid_confirm, confirmed_at, team_id, tournament_id)
+                VALUES (true, false, null, $1, $2)
+                """,
+                team_id, tournament_id
+            )
+            logger.info(f"Капитан команды id {team_id} отправил платеж")
+
+        except Exception as e:
+            logger.error(f"Ошибка при создании платежа для команды id {team_id}: {e}")
+
 
 

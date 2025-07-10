@@ -197,6 +197,9 @@ class PaymentsTournament(Base):
     paid: Mapped[bool] = mapped_column(default=False)   # True если пользователь нажал "Оплатил"
     paid_confirm: Mapped[bool] = mapped_column(default=False)   # True если админ подтвердил платеж
 
+    paid_at: Mapped[datetime.datetime] = mapped_column(server_default=text("TIMEZONE('utc', now())")) # время когда пользователь нажал "Оплатил"
+    confirmed_at: Mapped[datetime.datetime] = mapped_column(nullable=True) # время когда админ подтвердил
+
     tournament_id: Mapped[int] = mapped_column(ForeignKey("tournaments.id", ondelete="CASCADE"))
     tournament: Mapped["Tournament"] = relationship(back_populates="payments")
 

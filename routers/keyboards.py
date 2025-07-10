@@ -299,19 +299,14 @@ def payment_confirm_keyboard(user: User, event: Event, to_reserve: bool = False)
     return keyboard
 
 
-def payment_tournament_confirm_keyboard(team_id: int, tournament_id: int, to_reserve: bool) -> InlineKeyboardBuilder:
+def payment_tournament_confirm_keyboard(team_id: int, tournament_id: int) -> InlineKeyboardBuilder:
     """Клавиатура с кнопкой подтверждения оплаты для турниров"""
     keyboard = InlineKeyboardBuilder()
 
-    if to_reserve:
-        keyboard.row(InlineKeyboardButton(
-            text="Оплатил(а)", callback_data=f"t-paid-reserve_{team_id}_{tournament_id}"
-        ))
-    else:
-        keyboard.row(
-            InlineKeyboardButton(
-                text="Оплатил(а)", callback_data=f"t-paid_{team_id}_{tournament_id}")
-        )
+    keyboard.row(
+        InlineKeyboardButton(
+            text="Оплатил(а)", callback_data=f"t-paid_{team_id}_{tournament_id}")
+    )
 
     keyboard.row(InlineKeyboardButton(text="🔙 назад", callback_data=f"register-in-team_{team_id}_{tournament_id}"))
 
@@ -345,6 +340,16 @@ def confirm_decline_keyboard(event_id: int, user_id: int, to_reserve: bool = Fal
         keyboard.row(
             InlineKeyboardButton(text="Подтвердить ✅", callback_data=f"admin-payment_ok_{event_id}_{user_id}"),
             InlineKeyboardButton(text="Отклонить ❌", callback_data=f"admin-payment_cancel_{event_id}_{user_id}"), )
+    return keyboard
+
+
+def admin_confirm_tournament_payment_keyboard(team_id: int, tournament_id: int) -> InlineKeyboardBuilder:
+    """Клавиатура для подтверждения или отклонения платежа админом для турниров"""
+    keyboard = InlineKeyboardBuilder()
+    keyboard.row(
+        InlineKeyboardButton(text="Подтвердить ✅", callback_data=f"tournament-payment_ok_{team_id}_{tournament_id}"),
+        InlineKeyboardButton(text="Отклонить ❌", callback_data=f"tournament-payment_cancel_{team_id}_{tournament_id}"),
+    )
     return keyboard
 
 
