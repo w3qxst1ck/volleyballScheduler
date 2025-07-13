@@ -333,8 +333,12 @@ async def register_paid_event(callback: types.CallbackQuery, bot: Bot) -> None:
 @router.callback_query(lambda callback: callback.data.split("_")[1] == "my-events")
 async def user_event_registered_handler(callback: types.CallbackQuery) -> None:
     """Вывод мероприятий куда пользователь уже зарегистрирован"""
+    # все мероприятия кроме турниров
     payments = await AsyncOrm.get_user_payments_with_events_and_users(str(callback.from_user.id))
     active_events = list(filter(lambda payment: payment.event.active == True, payments))
+
+    # Турниры
+
 
     # получение зарезервированных мероприятий
     if payments:
