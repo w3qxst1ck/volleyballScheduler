@@ -1,3 +1,4 @@
+import datetime
 from typing import Any, List
 
 from aiogram import Router, types, F, Bot
@@ -63,12 +64,66 @@ async def paid_by_user(callback: types.CallbackQuery, session: Any, bot: Bot) ->
 
     # Сообщение админу
     date = convert_date(tournament.date)
-    time = convert_date(tournament.date)
+    time = convert_time(tournament.date)
     admin_msg = f"Капитан команды \"{team.title}\" <a href='tg://user?id={user.tg_id}'>{user.firstname} {user.lastname}</a> " \
                 f"оплатил запись на турнир <b>{tournament.type}</b> \"{tournament.title}\" <b>{date} {time}</b> " \
                 f"на сумму <b>{tournament.price} руб.</b> \n\nПодтвердите или отклоните оплату"
     keyboard = kb.admin_confirm_tournament_payment_keyboard(team_id, tournament_id)
     await bot.send_message(settings.main_admin_tg_id, admin_msg, reply_markup=keyboard.as_markup())
+
+
+@router.callback_query(F.data.split("_")[0] == "tournament-payment")
+async def admin_confirm_payment(callback: types.CallbackQuery, session: Any, bot: Bot) -> None:
+    """Подтверждение или отклонение оплаты администратором"""
+    confirmed = True if callback.data.split("_")[1] == "ok" else False
+    team_id = int(callback.data.split("_")[2])
+    tournament_id = int(callback.data.split("_")[3])
+
+    team: TeamUsers = await AsyncOrm.get_team(team_id, session)
+    tournament: Tournament = await AsyncOrm.get_tournament_by_id(tournament_id, session)
+    team_lead: User = await AsyncOrm.get_user_by_id(team.team_leader_id)
+
+    event_date = utils.convert_date(tournament.date)
+    event_time = utils.convert_time(tournament.date)
+
+    msg_to_admin = f"Капитан команды \"{team.title}\" <a href='tg://user?id={team_lead.tg_id}'>{team_lead.firstname} {team_lead.lastname}</a> " \
+          f"оплатил запись на турнир <b>{tournament.type}</b> \"{tournament.title}\" <b>{event_date} {event_time}</b> " \
+          f"на сумму <b>{tournament.price} руб.</b>\n\n"
+
+    msg_to_captain = f"🔔 <b>Автоматическое уведомление</b>\n\n" \
+                     f"Оплата за участие в турнире <b>{tournament.type}</b> \"{tournament.title}\" " \
+                     f"<b>{event_date} {event_time}</b> на сумму {tournament.price} руб. для команды " \
+                     f"\"{team.title}\"\n\n"
+
+    keyboard = kb.back_to_tournament(tournament_id)
+
+    # Если администратор подтвердил оплату
+    if confirmed:
+        # Обновляем статус платежа
+        now_time = datetime.datetime.now()
+        try:
+            await AsyncOrm.update_tournament_payment_status(team_id, now_time, session)
+            msg_to_admin += f"Оплата подтверждена ✅"
+            msg_to_captain += f"Подтверждена ✅"
+
+        except:
+            msg_to_admin += f"❌ Ошибка, не удалось подтвердить платеж команде \"{team.title}\"."
+            msg_to_captain += f"Не подтверждена ❌\nВы можете связаться с администрацией канала @{settings.main_admin_url}"
+
+    # Оплата отклонена
+    else:
+        # удаляем платеж
+        await AsyncOrm.delete_tournament_payment(team_id, session)
+
+        msg_to_admin += "Оплата отклонена ❌\nОповещение направлено капитану команды"
+        msg_to_captain += f"Не подтверждена ❌\nВы можете связаться с администрацией канала @{settings.main_admin_url}"
+
+    # Сообщения для администратора
+    await callback.message.edit_text(msg_to_admin)
+
+    # Отправка сообщения капитану команды
+    await bot.send_message(team_lead.tg_id, msg_to_captain, reply_markup=keyboard.as_markup())
+
 
 
 

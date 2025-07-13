@@ -6,7 +6,7 @@ from functools import wraps
 from typing import Callable, List
 
 from database.schemas import Event, User, EventRel, PaymentsEventsUsers, Payment, ReservedEvent, Tournament, \
-    TeamUsers, TournamentTeams
+    TeamUsers, TournamentTeams, TournamentPayment
 from routers.utils import convert_date, convert_time, get_weekday_from_date
 from settings import settings
 
@@ -478,7 +478,8 @@ def back_to_tournament(tournament_id: int) -> InlineKeyboardBuilder:
 
 def team_card_keyboard(tournament_id: int, team_id: int, user_already_in_team: bool,
                        user_already_has_another_team: bool, user_is_team_leader: bool,
-                       over_points: bool, over_players_count: bool, wrong_level: bool) -> InlineKeyboardBuilder:
+                       over_points: bool, over_players_count: bool, wrong_level: bool,
+                       payment: TournamentPayment | None) -> InlineKeyboardBuilder:
     """
     Клавиатура карточки команды
     user_already_in_team: bool - пользователь уже в этой команде
@@ -491,9 +492,9 @@ def team_card_keyboard(tournament_id: int, team_id: int, user_already_in_team: b
     keyboard = InlineKeyboardBuilder()
 
     if user_is_team_leader:
-        # TODO обработать случай с созданным платежем, подтвержденным платежом
-        keyboard.row(InlineKeyboardButton(text="Внести оплату",
-                                          callback_data=f"pay-for-team_{team_id}_{tournament_id}"))
+        if not payment:
+            keyboard.row(InlineKeyboardButton(text="Внести оплату",
+                                              callback_data=f"pay-for-team_{team_id}_{tournament_id}"))
 
     # Если пользователь еще не в команде, у него нет другой команды
     # и суммарное количество баллов не будет превышать лимит

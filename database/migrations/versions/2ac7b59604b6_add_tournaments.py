@@ -1,8 +1,8 @@
 """add_tournaments
 
-Revision ID: f90bf2f4bbe3
+Revision ID: 2ac7b59604b6
 Revises: e969545d2f6e
-Create Date: 2025-07-07 17:11:37.031202
+Create Date: 2025-07-13 14:20:57.319997
 
 """
 
@@ -13,7 +13,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = "f90bf2f4bbe3"
+revision: str = "2ac7b59604b6"
 down_revision: Union[str, None] = "e969545d2f6e"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -77,6 +77,13 @@ def upgrade() -> None:
         sa.Column("id", sa.Integer(), nullable=False),
         sa.Column("paid", sa.Boolean(), nullable=False),
         sa.Column("paid_confirm", sa.Boolean(), nullable=False),
+        sa.Column(
+            "paid_at",
+            sa.DateTime(),
+            server_default=sa.text("TIMEZONE('utc', now())"),
+            nullable=False,
+        ),
+        sa.Column("confirmed_at", sa.DateTime(), nullable=True),
         sa.Column("tournament_id", sa.Integer(), nullable=False),
         sa.Column("team_id", sa.Integer(), nullable=False),
         sa.ForeignKeyConstraint(["team_id"], ["teams.id"], ondelete="CASCADE"),
@@ -84,6 +91,7 @@ def upgrade() -> None:
             ["tournament_id"], ["tournaments.id"], ondelete="CASCADE"
         ),
         sa.PrimaryKeyConstraint("id"),
+        sa.UniqueConstraint("team_id"),
     )
     op.add_column("users", sa.Column("gender", sa.String(), nullable=True))
     # ### end Alembic commands ###

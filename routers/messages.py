@@ -1,7 +1,7 @@
 from typing import List
 
 from database.schemas import User, EventRel, Event, PaymentsEventsUsers, Payment, ReservedUser, Tournament, \
-    TeamUsers
+    TeamUsers, TournamentPayment
 from routers.utils import convert_date, convert_time, convert_date_named_month, calculate_team_points
 from settings import settings
 import datetime
@@ -264,7 +264,7 @@ def get_help_message() -> str:
 
 
 def team_card(team: TeamUsers, user_already_in_team, user_already_has_another_team: bool, over_points: bool,
-              over_players_count: bool, wrong_level: bool) -> str:
+              over_players_count: bool, wrong_level: bool, payment: TournamentPayment | None) -> str:
     """
     Вывод карточки команды
     user_already_in_team: bool - пользователь уже в этой команде
@@ -285,8 +285,20 @@ def team_card(team: TeamUsers, user_already_in_team, user_already_has_another_te
     elif wrong_level:
         already_in_team = "\n❗ Вы не можете записаться в команду, так как у вас неподходящий уровень"
 
+    # Статус оплаты
+    paid = "\n❌ Участие не оплачено"
+    if payment:
+        if payment.paid_confirm:
+            paid = "\n✅ Оплата подтверждена"
+        else:
+            paid = "\n⏳ Ожидается подтверждение платежа от администратора"
+
+    # Скрываем статус оплаты для всех кроме участников команды
+    if not user_already_in_team:
+        paid = ""
+
     team_points = calculate_team_points(team.users)
-    message = f"<b>{team.title}</b>\nКоличество баллов: <b>{team_points}</b>{already_in_team}\n\nУчастники:\n"
+    message = f"<b>{team.title}</b>{paid}{already_in_team}\n\nКоличество баллов: <b>{team_points}</b>\nУчастники:\n"
 
     for count, user in enumerate(team.users, start=1):
         message += f"<b>{count}.</b> <a href='tg://user?id={user.tg_id}'>{user.firstname} {user.lastname}</a> {settings.levels[user.level]}"

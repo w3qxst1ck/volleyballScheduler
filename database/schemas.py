@@ -96,3 +96,12 @@ class TournamentTeams(Tournament):
     teams: list[TeamUsers]
 
 
+class TournamentPayment(BaseModel):
+    id: int
+    paid: bool
+    paid_confirm: bool
+    paid_at: datetime.datetime
+    confirmed_at: datetime.datetime | None = None
+    tournament_id: int
+    team_id: int
+

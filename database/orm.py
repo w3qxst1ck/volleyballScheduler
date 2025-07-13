@@ -8,7 +8,7 @@ from sqlalchemy.orm import joinedload, selectinload
 import asyncpg
 
 import settings
-from database.schemas import Tournament, TournamentAdd, TeamUsers, User, UserAdd, TournamentTeams
+from database.schemas import Tournament, TournamentAdd, TeamUsers, User, UserAdd, TournamentTeams, TournamentPayment
 from logger import logger
 from database.database import async_engine, async_session_factory
 from database.tables import Base
@@ -910,5 +910,57 @@ class AsyncOrm:
         except Exception as e:
             logger.error(f"Ошибка при создании платежа для команды id {team_id}: {e}")
 
+    @staticmethod
+    async def get_tournament_payment_by_team_id(team_id: int, session: Any) -> TournamentPayment | None:
+        """Получение платежа по id команды"""
+        try:
+            row = await session.fetchrow(
+                """
+                SELECT * FROM tournament_payments
+                WHERE team_id = $1
+                """,
+                team_id
+            )
+            payment = None
 
+            if row:
+                payment = TournamentPayment.model_validate(row)
 
+            return payment
+
+        except Exception as e:
+            logger.error(f"Ошибка при получении платежа для команды id {team_id}: {e}")
+
+    @staticmethod
+    async def update_tournament_payment_status(team_id: int, confirmed_at: datetime.datetime, session: Any) -> None:
+        """Подтверждение платежа администратором"""
+        try:
+            await session.execute(
+                """
+                UPDATE tournament_payments 
+                SET paid_confirm = true, confirmed_at = $1
+                WHERE team_id = $2
+                """,
+                confirmed_at, team_id
+            )
+            logger.info(f"Оплата команды id {team_id} подтверждена администратором")
+
+        except Exception as e:
+            logger.error(f"Ошибка подтверждении платежа администратором для команды id {team_id}: {e}")
+            raise
+
+    @staticmethod
+    async def delete_tournament_payment(team_id: int, session: Any) -> None:
+        """Удаление платежа команды"""
+        try:
+            await session.execute(
+                """
+                DELETE FROM tournament_payments
+                WHERE team_id = $1
+                """,
+                team_id
+            )
+            logger.info(f"Платеж команды {team_id} удален")
+
+        except Exception as e:
+            logger.error(f"Ошибка удалении платежа для команды id {team_id}: {e}")

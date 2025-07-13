@@ -5,7 +5,7 @@ from aiogram.enums import ParseMode
 from aiogram.filters import or_f
 from aiogram.fsm.context import FSMContext
 
-from database.schemas import TeamUsers, User, Tournament, TournamentTeams
+from database.schemas import TeamUsers, User, Tournament, TournamentTeams, TournamentPayment
 from logger import logger
 from routers.middlewares import CheckPrivateMessageMiddleware, DatabaseMiddleware
 from routers import keyboards as kb, messages as ms
@@ -187,6 +187,8 @@ async def team_card(callback: types.CallbackQuery, session: Any) -> None:
     tournament: Tournament = await AsyncOrm.get_tournament_by_id(tournament_id, session)
     tournament_teams: list[TeamUsers] = await AsyncOrm.get_teams_with_users(tournament_id, session)
 
+    payment: TournamentPayment | None = await AsyncOrm.get_tournament_payment_by_team_id(team_id, session)
+
     # Проверяем зарегистрирован ли пользователь в какую нибудь из команд
     user_already_has_another_team: bool = False
     for reg_team in tournament_teams:
@@ -226,9 +228,9 @@ async def team_card(callback: types.CallbackQuery, session: Any) -> None:
             wrong_level = True
 
     message = ms.team_card(team, user_already_in_team, user_already_has_another_team, over_points, over_players_count,
-                           wrong_level)
+                           wrong_level, payment)
     keyboard = kb.team_card_keyboard(tournament_id, team_id, user_already_in_team, user_already_has_another_team,
-                                     user_is_team_leader, over_points, over_players_count, wrong_level)
+                                     user_is_team_leader, over_points, over_players_count, wrong_level, payment)
     await callback.message.edit_text(message, reply_markup=keyboard.as_markup())
 
 
