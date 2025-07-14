@@ -82,7 +82,7 @@ async def admin_delete_tournament_confirmed(callback: types.CallbackQuery, sessi
         date = convert_date(tournament.date)
         time = convert_time(tournament.date)
         user_msg = f"🔔 <b>Автоматическое уведомление</b>\n\n" \
-                   f"Турнир <b>\"{tournament.title}\"</b>, запланированное <b>{date}</b> в <b>{time}</b>, " \
+                   f"Турнир <b>\"{tournament.title}\"</b>, запланированный <b>{date}</b> в <b>{time}</b>, " \
                    f"<b>отменено администратором</b>\n\n" \
                    f"По вопросу возврата оплаты обращайтесь к администратору @{settings.main_admin_url}"
 

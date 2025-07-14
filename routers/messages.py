@@ -78,7 +78,7 @@ def tournament_card_for_user_message(event: Tournament, main_teams: list[TeamUse
     # Приписка для админа
     if for_admin:
         if main_teams or reserve_teams:
-            message += f"\nЧтобы удалить команду с турнира, нажмите кнопку с соответствующим номером команды"
+            message += f"\nЧтобы удалить команду с турнира, нажмите кнопку с соответствующим названием команды"
         else:
             message += f"\nНа турнир еще не зарегистрировалась ни одна команда"
 

@@ -252,8 +252,6 @@ async def reg_user_in_team(callback: types.CallbackQuery, session: Any, bot: Bot
     tournament_id = int(callback.data.split("_")[2])
     tg_id = str(callback.from_user.id)
 
-    # TODO проверки на уровень и кол-во участников
-
     tournament: Tournament = await AsyncOrm.get_tournament_by_id(tournament_id, session)
     team: TeamUsers = await AsyncOrm.get_team(team_id, session)
     team_leader: User = await AsyncOrm.get_user_by_id(team.team_leader_id)

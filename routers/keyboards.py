@@ -394,7 +394,7 @@ def tournament_card_admin_keyboard(main_teams: List[TeamUsers], reserve_teams: L
 
     if all_teams:
         for idx, team in enumerate(all_teams, start=1):
-            keyboard.row(InlineKeyboardButton(text=f"{idx}", callback_data=f"admin-delete-team_{tournament_id}_{team.team_id}"))
+            keyboard.row(InlineKeyboardButton(text=f"{team.title}", callback_data=f"admin-delete-team_{tournament_id}_{team.team_id}"))
         keyboard.adjust(3)
 
     keyboard.row(InlineKeyboardButton(text=f"🗑️ Удалить турнир", callback_data=f"admin-t-delete_{tournament_id}"))
