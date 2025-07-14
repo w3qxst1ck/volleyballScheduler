@@ -134,8 +134,18 @@ async def get_team_title(message: types.Message, state: FSMContext, session: Any
     try:
         team_title = message.text
     except:
-        await message.answer("Некорректное название команды, попробуйте еще раз",
+        prev_message = await message.answer("Некорректное название команды, попробуйте еще раз",
                              reply_markup=error_keyboard.as_markup())
+        await state.update_data(prev_message=prev_message)
+        return
+
+    # Проверяем не дублируется ли название команды
+    teams: List[TeamUsers] = await AsyncOrm.get_teams_with_users(tournament_id, session)
+    all_titles = [team.title.lower() for team in teams]
+    if team_title.lower() in all_titles:
+        msg = f"Команда с названием \"{team_title}\" уже зарегистрирована, пожалуйста, выберите другое название."
+        prev_message = await message.answer(msg, reply_markup=error_keyboard.as_markup())
+        await state.update_data(prev_message=prev_message)
         return
 
     team_leader_id = str(message.from_user.id)
@@ -256,7 +266,8 @@ async def reg_user_in_team(callback: types.CallbackQuery, session: Any, bot: Bot
     await bot.send_message(team_leader.tg_id, msg_for_leader, reply_markup=keyboard.as_markup())
 
     keyboard = kb.back_to_tournament(tournament_id)
-    await callback.message.edit_text("ℹ️ Запрос на вступление в команду отправлен капитану, дождитесь его подтверждения",
+    await callback.message.edit_text("🔔 <b>Автоматическое уведомление</b>\n\n"
+                                     "Запрос на вступление в команду отправлен капитану, дождитесь его подтверждения",
                                      reply_markup=keyboard.as_markup())
 
 
@@ -376,8 +387,9 @@ async def delete_team_from_tournament(callback: types.CallbackQuery, session: An
 
             # уведомление участников команды об удалении команды
             converted_date = convert_date_named_month(tournament.date)
-            msg = f"ℹ️ Капитан команды <a href='tg://user?id={user.tg_id}'>{user.firstname} {user.lastname}</a> удалил команду " \
-              f"<b>{team.title}</b> с турнира \"{tournament.title}\" {converted_date}"
+            msg = f"🔔 <b>Автоматическое уведомление</b>\n\n" \
+                  f"Капитан команды <a href='tg://user?id={user.tg_id}'>{user.firstname} {user.lastname}</a> удалил команду " \
+                  f"<b>{team.title}</b> с турнира \"{tournament.title}\" {converted_date}"
             for u in team.users:
                 # пропускаем капитана
                 if u.id == team.team_leader_id:
@@ -400,7 +412,8 @@ async def delete_team_from_tournament(callback: types.CallbackQuery, session: An
 
                         # оповещение участников команды переведенной из резерва
                         converted_date = convert_date_named_month(tournament.date)
-                        msg = f"ℹ️ Ваша команда <b>{reserve_team.title}</b> переведена в основные команды турнира \"{tournament.title}\" {converted_date} " \
+                        msg = f"🔔 <b>Автоматическое уведомление</b>\n\n" \
+                              f"Ваша команда <b>{reserve_team.title}</b> переведена в основные команды турнира \"{tournament.title}\" {converted_date} " \
                               f"в связи с появлением свободного места."
 
                         for u in reserve_team.users:

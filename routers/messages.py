@@ -27,7 +27,7 @@ def user_profile_message(user: User) -> str:
 
 
 # карточка для чемпионатов
-def tournament_card_for_user_message(event: Tournament, main_teams: list[TeamUsers], reserve_teams: list[TeamUsers]) -> str:
+def tournament_card_for_user_message(event: Tournament, main_teams: list[TeamUsers], reserve_teams: list[TeamUsers], for_admin: bool = False) -> str:
     """Информация о чемпионате с его командами"""
     date = convert_date_named_month(event.date)
     time = convert_time(event.date)
@@ -54,15 +54,22 @@ def tournament_card_for_user_message(event: Tournament, main_teams: list[TeamUse
         for count, team in enumerate(main_teams, start=1):
             # баллы команды
             team_points = calculate_team_points(team.users)
-            message += f"{count}. \"{team.title}\" (баллов: {team_points})\n"
+            message += f"<b>{count}.</b> \"{team.title}\" (баллов: {team_points})\n"
 
     if reserve_teams:
         message += "\n<b>Резервные команды:</b>\n"
 
-        for count, team in enumerate(reserve_teams, start=1):
+        for count, team in enumerate(reserve_teams, start=len(main_teams)+1):
             # баллы команды
             team_points = calculate_team_points(team.users)
-            message += f"{count}. \"{team.title}\" (баллов: {team_points})\n"
+            message += f"<b>{count}.</b> \"{team.title}\" (баллов: {team_points})\n"
+
+    # Приписка для админа
+    if for_admin:
+        if main_teams or reserve_teams:
+            message += f"\nЧтобы удалить команду с турнира, нажмите кнопку с соответствующим номером команды"
+        else:
+            message += f"\nНа турнир еще не зарегистрировалась ни одна команда"
 
     return message
 

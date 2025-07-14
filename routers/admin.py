@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import List, Any
 
 from aiogram import Router, types, Bot
 from aiogram.exceptions import TelegramBadRequest
@@ -7,7 +8,8 @@ from aiogram.fsm.context import FSMContext
 
 from database import schemas
 from database.orm import AsyncOrm
-from routers.middlewares import CheckPrivateMessageMiddleware, CheckIsAdminMiddleware
+from database.schemas import Tournament
+from routers.middlewares import CheckPrivateMessageMiddleware, CheckIsAdminMiddleware, DatabaseMiddleware
 from routers.utils import write_excel_file
 from settings import settings
 from routers.fsm_states import AddEventFSM, AddTournamentFSM
@@ -18,24 +20,35 @@ from routers import messages as ms
 router = Router()
 router.message.middleware.register(CheckPrivateMessageMiddleware())
 router.message.middleware.register(CheckIsAdminMiddleware(settings.admins))
+router.message.middleware.register(DatabaseMiddleware())
+router.callback_query.middleware.register(DatabaseMiddleware())
 
 
 # GET EVENTS
 @router.message(Command("events"))
 @router.callback_query(lambda callback: callback.data == "back-admin-events")
-async def get_events_handler(message: types.Message | types.CallbackQuery) -> None:
+async def get_events_handler(message: types.Message | types.CallbackQuery, session: Any) -> None:
     """Получение всех событий"""
+    all_events: list = []
     events = await AsyncOrm.get_events()
+    tournaments: List[Tournament] = await AsyncOrm.get_all_tournaments_by_status(active=True, session=session)
 
-    if events:
+    # Складываем турниры и тренировки
+    all_events.extend(events)
+    all_events.extend(tournaments)
+
+    if all_events:
         msg = "События"
+        # Сортируем события
+        all_events_sorted = sorted(all_events, key=lambda e: e.date)
     else:
         msg = "Событий пока нет"
+        all_events_sorted = []
 
     if type(message) == types.Message:
-        await message.answer(msg, reply_markup=kb.events_keyboard_admin(events).as_markup())
+        await message.answer(msg, reply_markup=kb.events_keyboard_admin(all_events_sorted).as_markup())
     else:
-        await message.message.edit_text(msg, reply_markup=kb.events_keyboard_admin(events).as_markup())
+        await message.message.edit_text(msg, reply_markup=kb.events_keyboard_admin(all_events_sorted).as_markup())
 
 
 # ADMIN EVENT CARD

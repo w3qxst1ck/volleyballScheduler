@@ -204,7 +204,7 @@ def my_event_card_keyboard(payment: Payment, reserved_event: bool = False) -> In
 
 
 def tournament_card_keyboard(tournament: Tournament, user_id: int, back_to: str, main_teams: list[TeamUsers],
-                             reserve_teams: list[TeamUsers]) -> InlineKeyboardBuilder:
+                             reserve_teams: List[TeamUsers]) -> InlineKeyboardBuilder:
     """Зарегистрироваться на чемпионат"""
     keyboard = InlineKeyboardBuilder()
     user_already_has_team: bool = False
@@ -354,14 +354,20 @@ def admin_confirm_tournament_payment_keyboard(team_id: int, tournament_id: int) 
 
 
 # ADMIN KEYBOARDS
-def events_keyboard_admin(events: list[Event]) -> InlineKeyboardBuilder:
+def events_keyboard_admin(events: list[Event | Tournament]) -> InlineKeyboardBuilder:
     """Клавиатура с мероприятиями для вывода админу"""
     keyboard = InlineKeyboardBuilder()
 
     for event in events:
         date = convert_date(event.date)
         time = convert_time(event.date)
-        keyboard.row(InlineKeyboardButton(text=f"{date} {time} {event.type}", callback_data=f"admin-event_{event.id}"))
+
+        # турнир
+        if type(event) == Tournament:
+            keyboard.row(InlineKeyboardButton(text=f"🏆 {date} {time} {event.type}", callback_data=f"admin-tournament_{event.id}"))
+        # тренировка
+        else:
+            keyboard.row(InlineKeyboardButton(text=f"{date} {time} {event.type}", callback_data=f"admin-event_{event.id}"))
 
     keyboard.adjust(1)
     return keyboard
@@ -381,12 +387,38 @@ def event_card_keyboard_admin(event: EventRel) -> InlineKeyboardBuilder:
     return keyboard
 
 
+def tournament_card_admin_keyboard(main_teams: List[TeamUsers], reserve_teams: List[TeamUsers], tournament_id: int) -> InlineKeyboardBuilder:
+    """Карточка турнира для администратора"""
+    keyboard = InlineKeyboardBuilder()
+    all_teams: List[TeamUsers] = main_teams + reserve_teams
+
+    if all_teams:
+        for idx, team in enumerate(all_teams, start=1):
+            keyboard.row(InlineKeyboardButton(text=f"{idx}", callback_data=f"admin-delete-team_{tournament_id}_{team.team_id}"))
+        keyboard.adjust(3)
+
+    keyboard.row(InlineKeyboardButton(text=f"🗑️ Удалить турнир", callback_data=f"admin-t-delete_{tournament_id}"))
+    keyboard.row(InlineKeyboardButton(text=f"🔙 назад", callback_data="back-admin-events"))
+    return keyboard
+
+
 def yes_no_keyboard_for_admin_delete_user_from_event(event_id: int, user_id: int) -> InlineKeyboardBuilder:
     """Подтверждение удаления участника с события"""
     keyboard = InlineKeyboardBuilder()
 
     keyboard.row(InlineKeyboardButton(text="Да", callback_data=f"admin-event-user-delete_{event_id}_{user_id}"))
     keyboard.row(InlineKeyboardButton(text="Нет", callback_data=f"admin-event_{event_id}"))
+    keyboard.adjust(2)
+
+    return keyboard
+
+
+def admin_confirmation_delete_team_keyboard(tournament_id: int, team_id: int) -> InlineKeyboardBuilder:
+    """Подтверждение удаления команды с турнира"""
+    keyboard = InlineKeyboardBuilder()
+
+    keyboard.row(InlineKeyboardButton(text="Да", callback_data=f"delete-team-confirmed_{tournament_id}_{team_id}"))
+    keyboard.row(InlineKeyboardButton(text="Нет", callback_data=f"admin-tournament_{tournament_id}"))
     keyboard.adjust(2)
 
     return keyboard
@@ -399,6 +431,26 @@ def yes_no_keyboard_for_admin_delete_event(event_id: int) -> InlineKeyboardBuild
     keyboard.row(InlineKeyboardButton(text="Да", callback_data=f"admin-event-delete-confirm_{event_id}"))
     keyboard.row(InlineKeyboardButton(text="Нет", callback_data=f"admin-event_{event_id}"))
     keyboard.adjust(2)
+
+    return keyboard
+
+
+def admin_confirmation_delete_tournament_keyboard(tournament_id: int) -> InlineKeyboardBuilder:
+    """Подтверждение удаления турнира"""
+    keyboard = InlineKeyboardBuilder()
+
+    keyboard.row(InlineKeyboardButton(text="Да", callback_data=f"admin-t-delete-confirm_{tournament_id}"))
+    keyboard.row(InlineKeyboardButton(text="Нет", callback_data=f"admin-tournament_{tournament_id}"))
+    keyboard.adjust(2)
+
+    return keyboard
+
+
+def back_to_admin_events() -> InlineKeyboardBuilder:
+    """Назад к событиям для админа"""
+    keyboard = InlineKeyboardBuilder()
+
+    keyboard.row(InlineKeyboardButton(text=f"🔙 назад", callback_data="back-admin-events"))
 
     return keyboard
 

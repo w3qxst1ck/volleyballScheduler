@@ -503,6 +503,43 @@ class AsyncOrm:
             logger.error(f"Ошибка при создании турнира: {e}")
 
     @staticmethod
+    async def get_all_tournaments_by_status(session: Any, active: bool) -> list[Tournament]:
+        """Получение всех чемпионатов в выбранную данную"""
+        start_date = datetime.datetime.now() - datetime.timedelta(days=settings.settings.expire_event_days)
+
+        try:
+            # Только активные
+            if active:
+                rows = await session.fetch(
+                    """
+                    SELECT * FROM tournaments
+                    WHERE active=true AND date > $1
+                    """,
+                    start_date
+                )
+
+            # Вместе с неактивными
+            else:
+                rows = await session.fetch(
+                    """
+                    SELECT * FROM tournaments
+                    WHERE date > $1
+                    """,
+                    start_date
+                )
+
+            if rows:
+                tournaments: list[Tournament] = [Tournament.model_validate(row) for row in rows]
+            else:
+                tournaments = []
+
+            return tournaments
+
+        except Exception as e:
+            logger.error(f"Ошибка при получении турниров в период с {start_date}: {e}")
+
+
+    @staticmethod
     async def get_all_tournaments(days_ahead: int, session: Any, active: bool = True) -> list[Tournament]:
         """Получение всех чемпионатов в выбранную данную"""
         date_before = datetime.datetime.combine(datetime.datetime.now().date(), datetime.datetime.min.time())
@@ -964,3 +1001,20 @@ class AsyncOrm:
 
         except Exception as e:
             logger.error(f"Ошибка удалении платежа для команды id {team_id}: {e}")
+
+    @staticmethod
+    async def delete_tournament(tournament_id: int, tg_id: str, session: Any) -> None:
+        """Удаление турнира"""
+        try:
+            await session.execute(
+                """
+                DELETE FROM tournaments
+                WHERE id = $1
+                """,
+                tournament_id
+            )
+            logger.info(f"Администратор {tg_id} удалил турнир id {tournament_id}")
+
+        except Exception as e:
+            logger.error(f"Ошибка при удалении турнира {tournament_id}: {e}")
+            raise
