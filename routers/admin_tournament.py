@@ -3,7 +3,7 @@ from typing import Any, List
 from aiogram import Router, types, F, Bot
 
 from database.orm import AsyncOrm
-from database.schemas import TeamUsers, Tournament
+from database.schemas import TeamUsers, Tournament, User
 from routers.middlewares import CheckPrivateMessageMiddleware, CheckIsAdminMiddleware, DatabaseMiddleware
 from routers.utils import convert_date, convert_time, convert_date_named_month
 from settings import settings
@@ -25,8 +25,8 @@ router.callback_query.middleware.register(DatabaseMiddleware())
 async def admin_tournament_card(callback: types.CallbackQuery, session: Any) -> None:
     """Карточка турнира для админа"""
     tournament_id = int(callback.data.split("_")[1])
-    tournament = await AsyncOrm.get_tournament_by_id(tournament_id, session)
 
+    tournament: Tournament = await AsyncOrm.get_tournament_by_id(tournament_id, session)
     teams_users: list[TeamUsers] = await AsyncOrm.get_teams_with_users(tournament_id, session)
 
     # разбиение на основные и резервные команды
@@ -175,4 +175,114 @@ async def admin_delete_team_confirmed(callback: types.CallbackQuery, session: An
 
     except Exception:
         pass
+
+
+# LEVELS TOURNAMENT CARD
+@router.callback_query(F.data.split("_")[0] == "admin-t-levels")
+async def set_level_choose_team(callback: types.CallbackQuery, session: Any) -> None:
+    """Выбор команды для выставления уровня участнику"""
+    tournament_id = int(callback.data.split("_")[1])
+
+    tournament: Tournament = await AsyncOrm.get_tournament_by_id(tournament_id, session)
+    teams_users: List[TeamUsers] = await AsyncOrm.get_teams_with_users(tournament_id, session)
+
+    # разбиение на основные и резервные команды
+    main_teams = []
+    reserve_teams = []
+    for team in teams_users:
+        if team.reserve:
+            reserve_teams.append(team)
+        else:
+            main_teams.append(team)
+
+    # сортируем основные команды
+    main_teams = [team for team in sorted(main_teams, key=lambda x: x.title)]
+
+    msg = ms.tournament_card_for_user_message(tournament, main_teams, reserve_teams, for_levels=True)
+    keyboard = kb.tournament_card_level_keyboard(main_teams, reserve_teams, tournament_id)
+
+    await callback.message.edit_text(msg, reply_markup=keyboard.as_markup(), disable_web_page_preview=True)
+
+
+@router.callback_query(F.data.split("_")[0] == "admin-t-level-team")
+async def set_level_choose_player(callback: types.CallbackQuery, session: Any) -> None:
+    """Выбор участника для выставления уровня"""
+    tournament_id = int(callback.data.split("_")[1])
+    team_id = int(callback.data.split("_")[2])
+
+    team: TeamUsers = await AsyncOrm.get_team(team_id, session)
+    sorted_users = sorted(team.users, key=lambda u: u.level)
+
+    # карточка команды
+    msg = f"<b>{team.title}</b>\n\n"
+    for idx, user in enumerate(sorted_users, start=1):
+        msg += f"<b>{idx}.</b> <a href='tg://user?id={user.tg_id}'>{user.firstname} {user.lastname}</a> {settings.levels[user.level]}"
+        if user.id == team.team_leader_id:
+            msg += " (капитан)"
+        msg += "\n"
+    msg += f"\nЧтобы выставить уровень участника, нажмите кнопку с соответствующим номером участника"
+
+    keyboard = kb.choose_player_for_level(sorted_users, tournament_id, team_id)
+    await callback.message.edit_text(msg, reply_markup=keyboard.as_markup())
+
+
+@router.callback_query(F.data.split("_")[0] == "admin-t-level-user")
+async def set_level_choose_level(callback: types.CallbackQuery) -> None:
+    """Выбор уровня для участника"""
+    tournament_id = int(callback.data.split("_")[1])
+    team_id = int(callback.data.split("_")[2])
+    user_id = int(callback.data.split("_")[3])
+
+    user: User = await AsyncOrm.get_user_by_id(user_id)
+
+    if user.level:
+        msg = f"Сейчас <b>{user.firstname} {user.lastname}</b> имеет уровень <b>{settings.levels[user.level]}</b>\n\n"
+    else:
+        msg = f"Сейчас <b>{user.firstname} {user.lastname} не имеет уровня</b>\n\n"
+    msg += "Выберите уровень, который хотите установить пользователю"
+
+    keyboard = kb.t_levels_keyboards(tournament_id, team_id, user_id)
+
+    await callback.message.edit_text(msg, reply_markup=keyboard.as_markup())
+
+
+@router.callback_query(lambda callback: callback.data.split("_")[0] == "admin-add-t-level")
+async def update_level(callback: types.CallbackQuery, session: Any, bot: Bot) -> None:
+    """Установка уровня"""
+    tournament_id = int(callback.data.split("_")[1])
+    user_id = int(callback.data.split("_")[2])
+    level = int(callback.data.split("_")[3])
+
+    tournament = await AsyncOrm.get_tournament_by_id(tournament_id, session)
+    teams_users: List[TeamUsers] = await AsyncOrm.get_teams_with_users(tournament_id, session)
+    user: User = await AsyncOrm.get_user_by_id(user_id)
+
+    # обновляем уровень
+    await AsyncOrm.set_level_for_user(user_id, level)
+
+    # сообщение админу
+    await callback.message.edit_text(f"Уровень пользователя <b>{user.firstname} {user.lastname}</b> обновлен на {settings.levels[level]}")
+
+    # второе сообщение админу
+    # разбиение на основные и резервные команды
+    main_teams = []
+    reserve_teams = []
+    for team in teams_users:
+        if team.reserve:
+            reserve_teams.append(team)
+        else:
+            main_teams.append(team)
+
+    # сортируем основные команды
+    main_teams = [team for team in sorted(main_teams, key=lambda x: x.title)]
+
+    msg = ms.tournament_card_for_user_message(tournament, main_teams, reserve_teams, for_levels=True)
+    keyboard = kb.tournament_card_level_keyboard(main_teams, reserve_teams, tournament_id)
+    await callback.message.answer(msg, reply_markup=keyboard.as_markup(), disable_web_page_preview=True)
+
+    # сообщение пользователю
+    user_msg = ms.notify_set_level_message(level)
+    await bot.send_message(str(user.tg_id), user_msg)
+
+
 

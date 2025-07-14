@@ -504,7 +504,7 @@ class AsyncOrm:
 
     @staticmethod
     async def get_all_tournaments_by_status(session: Any, active: bool) -> list[Tournament]:
-        """Получение всех чемпионатов в выбранную данную"""
+        """Получение всех турниров по статусу"""
         start_date = datetime.datetime.now() - datetime.timedelta(days=settings.settings.expire_event_days)
 
         try:
@@ -538,6 +538,30 @@ class AsyncOrm:
         except Exception as e:
             logger.error(f"Ошибка при получении турниров в период с {start_date}: {e}")
 
+    @staticmethod
+    async def get_last_tournaments(session: Any) -> list[Tournament]:
+        """Получение всех турниров за последние три дня"""
+        start_date = (datetime.datetime.now(tz=pytz.timezone("Europe/Moscow")) - datetime.timedelta(days=3)).date()
+        end_date = (datetime.datetime.now(tz=pytz.timezone("Europe/Moscow")) + datetime.timedelta(days=1)).date()
+
+        try:
+            rows = await session.fetch(
+                """
+                SELECT * FROM tournaments
+                WHERE date > $1 AND date < $2
+                """,
+                start_date, end_date
+            )
+
+            if rows:
+                tournaments: list[Tournament] = [Tournament.model_validate(row) for row in rows]
+            else:
+                tournaments = []
+
+            return tournaments
+
+        except Exception as e:
+            logger.error(f"Ошибка при получении турниров в период с {start_date} по {end_date}: {e}")
 
     @staticmethod
     async def get_all_tournaments(days_ahead: int, session: Any, active: bool = True) -> list[Tournament]:

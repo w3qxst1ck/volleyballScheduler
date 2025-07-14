@@ -27,7 +27,8 @@ def user_profile_message(user: User) -> str:
 
 
 # карточка для чемпионатов
-def tournament_card_for_user_message(event: Tournament, main_teams: list[TeamUsers], reserve_teams: list[TeamUsers], for_admin: bool = False) -> str:
+def tournament_card_for_user_message(event: Tournament, main_teams: list[TeamUsers], reserve_teams: list[TeamUsers],
+                                     for_admin: bool = False, for_levels: bool = False) -> str:
     """Информация о чемпионате с его командами"""
     date = convert_date_named_month(event.date)
     time = convert_time(event.date)
@@ -54,7 +55,12 @@ def tournament_card_for_user_message(event: Tournament, main_teams: list[TeamUse
         for count, team in enumerate(main_teams, start=1):
             # баллы команды
             team_points = calculate_team_points(team.users)
-            message += f"<b>{count}.</b> \"{team.title}\" (баллов: {team_points})\n"
+
+            # убираем баллы при выставлении уровней
+            if for_levels:
+                message += f"<b>{count}.</b> \"{team.title}\"\n"
+            else:
+                message += f"<b>{count}.</b> \"{team.title}\" (баллов: {team_points})\n"
 
     if reserve_teams:
         message += "\n<b>Резервные команды:</b>\n"
@@ -62,7 +68,12 @@ def tournament_card_for_user_message(event: Tournament, main_teams: list[TeamUse
         for count, team in enumerate(reserve_teams, start=len(main_teams)+1):
             # баллы команды
             team_points = calculate_team_points(team.users)
-            message += f"<b>{count}.</b> \"{team.title}\" (баллов: {team_points})\n"
+
+            # убираем баллы при выставлении уровней
+            if for_levels:
+                message += f"<b>{count}.</b> \"{team.title}\"\n"
+            else:
+                message += f"<b>{count}.</b> \"{team.title}\" (баллов: {team_points})\n"
 
     # Приписка для админа
     if for_admin:
@@ -70,6 +81,13 @@ def tournament_card_for_user_message(event: Tournament, main_teams: list[TeamUse
             message += f"\nЧтобы удалить команду с турнира, нажмите кнопку с соответствующим номером команды"
         else:
             message += f"\nНа турнир еще не зарегистрировалась ни одна команда"
+
+    # Приписка для уровней
+    if for_levels:
+        if main_teams or reserve_teams:
+            message += f"\nЧтобы выставить уровень, нажмите кнопку с соответствующим названием команды участника"
+        else:
+            message += f"\nНа турнир не зарегистрировалась ни одна команда"
 
     return message
 
@@ -210,7 +228,7 @@ def notify_deleted_user_message(event: EventRel) -> str:
 def notify_set_level_message(level: int) -> str:
     """Сообщение для автоматического уведомления о присвоении уровня"""
     message = f"🔔 <b>Автоматическое уведомление</b>\n\n" \
-              f"Администратор присвоил вам уровень <b>\{settings.levels[level]}\</b>"
+              f"Администратор присвоил вам уровень <b>{settings.levels[level]}</b>"
 
     return message
 

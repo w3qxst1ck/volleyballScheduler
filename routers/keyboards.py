@@ -402,6 +402,32 @@ def tournament_card_admin_keyboard(main_teams: List[TeamUsers], reserve_teams: L
     return keyboard
 
 
+def tournament_card_level_keyboard(main_teams: List[TeamUsers], reserve_teams: List[TeamUsers], tournament_id: int) -> InlineKeyboardBuilder:
+    """Карточка турнира для уровней"""
+    keyboard = InlineKeyboardBuilder()
+    all_teams: List[TeamUsers] = main_teams + reserve_teams
+
+    if all_teams:
+        for idx, team in enumerate(all_teams, start=1):
+            keyboard.row(InlineKeyboardButton(text=f"{team.title}", callback_data=f"admin-t-level-team_{tournament_id}_{team.team_id}"))
+        keyboard.adjust(3)
+
+    keyboard.row(InlineKeyboardButton(text=f"🔙 назад", callback_data="back-admin-levels"))
+    return keyboard
+
+
+def choose_player_for_level(users: List[User], tournament_id: int, team_id: int) -> InlineKeyboardBuilder:
+    """Клавиатура с выбора участника команды для уровня"""
+    keyboard = InlineKeyboardBuilder()
+
+    for idx, user in enumerate(users, start=1):
+        keyboard.row(InlineKeyboardButton(text=f"{idx}", callback_data=f"admin-t-level-user_{tournament_id}_{team_id}_{user.id}"))
+    keyboard.adjust(3)
+
+    keyboard.row(InlineKeyboardButton(text=f"🔙 назад", callback_data=f"admin-t-levels_{tournament_id}"))
+    return keyboard
+
+
 def yes_no_keyboard_for_admin_delete_user_from_event(event_id: int, user_id: int) -> InlineKeyboardBuilder:
     """Подтверждение удаления участника с события"""
     keyboard = InlineKeyboardBuilder()
@@ -455,13 +481,19 @@ def back_to_admin_events() -> InlineKeyboardBuilder:
     return keyboard
 
 
-def events_levels_keyboard_admin(events: list[Event]) -> InlineKeyboardBuilder:
+def events_levels_keyboard_admin(events: list[Event | Tournament]) -> InlineKeyboardBuilder:
     """Клавиатура с мероприятиями для вывода админу для выставления уровней"""
     keyboard = InlineKeyboardBuilder()
 
     for event in events:
         date = convert_date(event.date)
-        keyboard.row(InlineKeyboardButton(text=f"{date} {event.type}", callback_data=f"admin-event-levels_{event.id}"))
+
+        # турниры
+        if type(event) == Tournament:
+            keyboard.row(InlineKeyboardButton(text=f"🏆 {date} {event.type}", callback_data=f"admin-t-levels_{event.id}"))
+        # тренировки
+        else:
+            keyboard.row(InlineKeyboardButton(text=f"{date} {event.type}", callback_data=f"admin-event-levels_{event.id}"))
 
     keyboard.adjust(1)
     return keyboard
@@ -489,6 +521,19 @@ def event_levels_keyboards(event_id: int, user_id: int) -> InlineKeyboardBuilder
     keyboard.adjust(2)
 
     keyboard.row(InlineKeyboardButton(text=f"🔙 назад", callback_data=f"admin-event-levels_{event_id}"))
+
+    return keyboard
+
+
+def t_levels_keyboards(tournament_id: int, team_id: int, user_id: int) -> InlineKeyboardBuilder:
+    """Инлайн клавиатура с уровнями для выставления пользователю на турнирах"""
+    keyboard = InlineKeyboardBuilder()
+
+    for k, v in settings.levels.items():
+        keyboard.row(InlineKeyboardButton(text=f"{v}", callback_data=f"admin-add-t-level_{tournament_id}_{user_id}_{k}"))
+    keyboard.adjust(2)
+
+    keyboard.row(InlineKeyboardButton(text=f"🔙 назад", callback_data=f"admin-t-level-team_{tournament_id}_{team_id}"))
 
     return keyboard
 

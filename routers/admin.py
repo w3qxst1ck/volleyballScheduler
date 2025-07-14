@@ -405,19 +405,28 @@ async def add_event_date_handler(message: types.Message, state: FSMContext) -> N
 # SET LEVEL
 @router.message(Command("levels"))
 @router.callback_query(lambda callback: callback.data == "back-admin-levels")
-async def choose_event_for_set_level_handler(message: types.Message) -> None:
+async def choose_event_for_set_level_handler(message: types.Message, session: Any) -> None:
     """Выбор мероприятия для назначения уровня пользователям"""
+    all_events = []
     events = await AsyncOrm.get_last_events()
+    tournaments: List[Tournament] = await AsyncOrm.get_last_tournaments(session)
 
-    if events:
+    # Складываем турниры и тренировки
+    all_events.extend(events)
+    all_events.extend(tournaments)
+
+    if all_events:
+        # Сортируем события
+        all_events_sorted = sorted(all_events, key=lambda e: e.date)
         msg = "События за последние 3 дня"
     else:
+        all_events_sorted = []
         msg = "Прошедших событий для присвоения уровня нет"
 
     if type(message) == types.Message:
-        await message.answer(msg, reply_markup=kb.events_levels_keyboard_admin(events).as_markup())
+        await message.answer(msg, reply_markup=kb.events_levels_keyboard_admin(all_events_sorted).as_markup())
     else:
-        await message.message.edit_text(msg, reply_markup=kb.events_levels_keyboard_admin(events).as_markup())
+        await message.message.edit_text(msg, reply_markup=kb.events_levels_keyboard_admin(all_events_sorted).as_markup())
 
 
 @router.callback_query(lambda callback: callback.data.split("_")[0] == "admin-event-levels")
