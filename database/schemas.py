@@ -92,6 +92,12 @@ class Tournament(TournamentAdd):
     id: int
 
 
+class TournamentPaid(TournamentAdd):
+    reserve: bool
+    # paid: bool | None = None
+    # paid_confirm: bool
+
+
 class TournamentTeams(Tournament):
     teams: list[TeamUsers]
 

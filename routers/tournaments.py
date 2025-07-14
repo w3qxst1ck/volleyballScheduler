@@ -23,7 +23,8 @@ router.callback_query.middleware.register(DatabaseMiddleware())
 
 
 # FOR TOURNAMENTS
-@router.callback_query(lambda callback: callback.data.split("_")[0] == "user-tournament")
+@router.callback_query(or_f(F.data.split("_")[0] == "user-tournament",
+                            F.data.split("_")[0] == "my-tournament"))
 async def user_tournament_handler(callback: types.CallbackQuery, session: Any, state: FSMContext) -> None:
     """Вывод карточки турнира для пользователя"""
     try:
@@ -68,16 +69,17 @@ async def user_tournament_handler(callback: types.CallbackQuery, session: Any, s
 
     msg = ms.tournament_card_for_user_message(tournament, main_teams, reserve_teams)
 
+    if callback.data.split("_")[0] == "my-tournament":
+        back_to = f"menu_my-events"
+    else:
+        back_to = f"events-date_{utils.convert_date(tournament.date)}"
+
+    keyboard = kb.tournament_card_keyboard(tournament, user.id, back_to, main_teams, reserve_teams)
+
     await callback.message.edit_text(
         msg,
         disable_web_page_preview=True,
-        reply_markup=kb.tournament_card_keyboard(
-            tournament,
-            user.id,
-            f"events-date_{utils.convert_date(tournament.date)}",
-            main_teams,
-            reserve_teams
-        ).as_markup()
+        reply_markup=keyboard.as_markup()
     )
 
 
@@ -190,6 +192,7 @@ async def team_card(callback: types.CallbackQuery, session: Any) -> None:
     team_id = int(callback.data.split("_")[1])
     tournament_id = int(callback.data.split("_")[2])
     tg_id = str(callback.from_user.id)
+    come_from = callback.data.split("_")[3]
 
     user = await AsyncOrm.get_user_by_tg_id(tg_id)
     team = await AsyncOrm.get_team(team_id, session)
@@ -239,8 +242,15 @@ async def team_card(callback: types.CallbackQuery, session: Any) -> None:
 
     message = ms.team_card(team, user_already_in_team, user_already_has_another_team, over_points, over_players_count,
                            wrong_level, payment)
+
+    if come_from == "mm":
+        back_to = f"user-tournament_{tournament_id}"
+    else:
+        back_to = f"my-tournament_{tournament_id}"
+
     keyboard = kb.team_card_keyboard(tournament_id, team_id, user_already_in_team, user_already_has_another_team,
-                                     user_is_team_leader, over_points, over_players_count, wrong_level, payment)
+                                     user_is_team_leader, over_points, over_players_count, wrong_level, payment,
+                                     back_to)
     await callback.message.edit_text(message, reply_markup=keyboard.as_markup())
 
 

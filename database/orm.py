@@ -8,7 +8,8 @@ from sqlalchemy.orm import joinedload, selectinload
 import asyncpg
 
 import settings
-from database.schemas import Tournament, TournamentAdd, TeamUsers, User, UserAdd, TournamentTeams, TournamentPayment
+from database.schemas import Tournament, TournamentAdd, TeamUsers, User, UserAdd, TournamentTeams, TournamentPayment, \
+    TournamentPaid
 from logger import logger
 from database.database import async_engine, async_session_factory
 from database.tables import Base
@@ -1042,3 +1043,25 @@ class AsyncOrm:
         except Exception as e:
             logger.error(f"Ошибка при удалении турнира {tournament_id}: {e}")
             raise
+
+    @staticmethod
+    async def get_tournament_for_user(user_id: int, session: Any) -> list[Tournament]:
+        """Получает список турниров куда зарегистрирован пользователь"""
+        try:
+            rows = await session.fetch(
+                """
+                SELECT t.* FROM tournaments AS t
+                JOIN teams AS tm ON t.id = tm.tournament_id
+                JOIN teams_users AS ts ON tm.id = ts.team_id
+                WHERE ts.user_id = $1 AND t.active = true
+                """,
+                user_id
+            )
+            tournaments = []
+            if rows:
+                tournaments = [Tournament.model_validate(row) for row in rows]
+
+            return tournaments
+
+        except Exception as e:
+            logger.error(f"Ошибка при получении турниров для пользователя id {user_id}: {e}")

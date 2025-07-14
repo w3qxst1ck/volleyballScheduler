@@ -7,7 +7,7 @@ from aiogram.filters import Command, StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.types import FSInputFile
 
-from database.schemas import Tournament, Event, TeamUsers, TournamentTeams
+from database.schemas import Tournament, Event, TeamUsers, TournamentTeams, TournamentPaid
 from logger import logger
 from routers.middlewares import CheckPrivateMessageMiddleware, DatabaseMiddleware
 from routers import keyboards as kb, messages as ms
@@ -331,14 +331,23 @@ async def register_paid_event(callback: types.CallbackQuery, bot: Bot) -> None:
 
 # USER ALREADY REGISTERED EVENTS
 @router.callback_query(lambda callback: callback.data.split("_")[1] == "my-events")
-async def user_event_registered_handler(callback: types.CallbackQuery) -> None:
+async def user_event_registered_handler(callback: types.CallbackQuery, session: Any) -> None:
     """Вывод мероприятий куда пользователь уже зарегистрирован"""
+    tg_id = str(callback.from_user.id)
+    user = await AsyncOrm.get_user_by_tg_id(tg_id)
+
     # все мероприятия кроме турниров
     payments = await AsyncOrm.get_user_payments_with_events_and_users(str(callback.from_user.id))
     active_events = list(filter(lambda payment: payment.event.active == True, payments))
 
     # Турниры
+    tournaments: list[Tournament] = await AsyncOrm.get_tournament_for_user(user.id, session)
+    active_events.extend(tournaments)
 
+    if active_events:
+        all_events = sorted(active_events, key=lambda e: e.date if type(e) == Tournament else e.event.date)
+    else:
+        all_events = []
 
     # получение зарезервированных мероприятий
     if payments:
@@ -347,7 +356,7 @@ async def user_event_registered_handler(callback: types.CallbackQuery) -> None:
     else:
         reserved_events = []
 
-    if not active_events:
+    if not all_events:
         msg = "Вы пока никуда не записаны\n\nВы можете это сделать во вкладке \n\"🗓️ Все события\""
     else:
         msg = "<b>События куда вы записались:</b>\n\n" \
@@ -355,7 +364,7 @@ async def user_event_registered_handler(callback: types.CallbackQuery) -> None:
               "📝 - резерв на событие\n" \
               "⏳ - ожидается подтверждение оплаты от администратора"
 
-    await callback.message.edit_text(msg, reply_markup=kb.user_events(active_events, reserved_events).as_markup())
+    await callback.message.edit_text(msg, reply_markup=kb.user_events(all_events, reserved_events).as_markup())
 
 
 @router.callback_query(lambda callback: callback.data.split("_")[0] == "my-events")

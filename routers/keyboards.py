@@ -6,7 +6,7 @@ from functools import wraps
 from typing import Callable, List
 
 from database.schemas import Event, User, EventRel, PaymentsEventsUsers, Payment, ReservedEvent, Tournament, \
-    TeamUsers, TournamentTeams, TournamentPayment
+    TeamUsers, TournamentTeams, TournamentPayment, TournamentPaid
 from routers.utils import convert_date, convert_time, get_weekday_from_date
 from settings import settings
 
@@ -154,26 +154,39 @@ def confirm_choose_gender_keyboard(gender: str) -> InlineKeyboardBuilder:
 
 
 @back_button("user-menu")
-def user_events(payments: list[PaymentsEventsUsers], reserved_events: list[ReservedEvent]) -> InlineKeyboardBuilder:
+def user_events(events: list[PaymentsEventsUsers | Tournament],
+                reserved_events: list[ReservedEvent]) -> InlineKeyboardBuilder:
     """Мероприятия куда пользователь зарегистрирован"""
     keyboard = InlineKeyboardBuilder()
     reserved_events_ids = [reserve.event.id for reserve in reserved_events]
 
-    for payment in payments:
-        date = convert_date(payment.event.date)
-        weekday = settings.weekdays[datetime.datetime.weekday(payment.event.date)]
+    for event in events:
+        # для турниров
+        if type(event) == Tournament:
+            date = convert_date(event.date)
+            weekday = settings.weekdays[datetime.datetime.weekday(event.date)]
 
-        if payment.event.id in reserved_events_ids:
-            status = "📝"
-        elif payment.paid_confirm:
-            status = "✅️"
+            keyboard.row(InlineKeyboardButton(
+                text=f"🏆 {date} ({weekday}) {event.type}",
+                callback_data=f"my-tournament_{event.id}")
+            )
+
+        # для остальных мероприятий
         else:
-            status = "⏳"
+            date = convert_date(event.event.date)
+            weekday = settings.weekdays[datetime.datetime.weekday(event.event.date)]
 
-        keyboard.row(InlineKeyboardButton(
-            text=f"{status} {date} ({weekday}) {payment.event.type}",
-            callback_data=f"my-events_{payment.id}")
-        )
+            if event.event.id in reserved_events_ids:
+                status = "📝"
+            elif event.paid_confirm:
+                status = "✅️"
+            else:
+                status = "⏳"
+
+            keyboard.row(InlineKeyboardButton(
+                text=f"{status} {date} ({weekday}) {event.event.type}",
+                callback_data=f"my-events_{event.id}")
+            )
 
     keyboard.adjust(1)
     return keyboard
@@ -219,7 +232,10 @@ def tournament_card_keyboard(tournament: Tournament, user_id: int, back_to: str,
                 registered = "✅️ "
                 user_already_has_team = True
 
-            keyboard.row(InlineKeyboardButton(text=f"{registered}{team.title}", callback_data=f"register-in-team_{team.team_id}_{tournament.id}"))
+            if back_to == "menu_my-events":
+                keyboard.row(InlineKeyboardButton(text=f"{registered}{team.title}", callback_data=f"register-in-team_{team.team_id}_{tournament.id}_me"))
+            else:
+                keyboard.row(InlineKeyboardButton(text=f"{registered}{team.title}", callback_data=f"register-in-team_{team.team_id}_{tournament.id}_mm"))
 
     # кнопки резервных команд
     if reserve_teams:
@@ -576,7 +592,8 @@ def back_to_tournament(tournament_id: int) -> InlineKeyboardBuilder:
 def team_card_keyboard(tournament_id: int, team_id: int, user_already_in_team: bool,
                        user_already_has_another_team: bool, user_is_team_leader: bool,
                        over_points: bool, over_players_count: bool, wrong_level: bool,
-                       payment: TournamentPayment | None) -> InlineKeyboardBuilder:
+                       payment: TournamentPayment | None,
+                       back_to: str) -> InlineKeyboardBuilder:
     """
     Клавиатура карточки команды
     user_already_in_team: bool - пользователь уже в этой команде
@@ -604,7 +621,7 @@ def team_card_keyboard(tournament_id: int, team_id: int, user_already_in_team: b
         keyboard.row(InlineKeyboardButton(text="Выйти из команды",
                                           callback_data=f"leave-user-from-team_{team_id}_{tournament_id}"))
 
-    keyboard.row(InlineKeyboardButton(text="🔙 назад", callback_data=f"user-tournament_{tournament_id}"))
+    keyboard.row(InlineKeyboardButton(text="🔙 назад", callback_data=back_to))
 
     return keyboard
 
