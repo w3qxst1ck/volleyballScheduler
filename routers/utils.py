@@ -221,7 +221,7 @@ async def write_excel_file(data: List[schemas.User]) -> None:
     print('DataFrame is written to Excel File successfully.')
 
 
-def calculate_team_points(users: List[User]) -> int:
+def calculate_team_points(users: List[User], libero_id: int = None) -> int:
     """
     Подсчет количества баллов команды для турниров (берется 6 лучших игроков).
     Влияет пол игрока и его уровень.
@@ -236,8 +236,21 @@ def calculate_team_points(users: List[User]) -> int:
 
     # берем баллы 6 сильнейших
     for user in sorted_users[:6]:
-        user_points = settings.user_points[user.gender][user.level]
-        team_points += user_points
+
+        # если среди сильнейших есть либеро
+        if user.id == libero_id:
+            # случай когда кол-во человек в команде больше 6
+            if len(sorted_users) > 6:
+                extra_user = sorted_users[7]
+                user_points = settings.user_points[extra_user.gender][extra_user.level]
+                team_points += user_points
+
+            # если кол-во меньше 6, просто не учитываем его очки
+            else:
+                continue
+        else:
+            user_points = settings.user_points[user.gender][user.level]
+            team_points += user_points
 
     return team_points
 

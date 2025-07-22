@@ -1065,3 +1065,20 @@ class AsyncOrm:
 
         except Exception as e:
             logger.error(f"Ошибка при получении турниров для пользователя id {user_id}: {e}")
+
+    @staticmethod
+    async def update_team_libero(team_id: int, user_id: int, session: Any) -> None:
+        """Обновляет либеро в команде"""
+        try:
+            session.execute(
+                """
+                UPDATE teams 
+                SET team_libero_id = $1
+                WHERE id = $2 
+                """,
+                user_id, team_id
+            )
+            logger.info(f"Либеро команды {team_id} обновлен на {user_id}")
+
+        except Exception as e:
+            logger.error(f"Ошибка при обновлении либеро на {user_id} в команде {team_id}: {e}")

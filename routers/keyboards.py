@@ -610,15 +610,16 @@ def team_card_keyboard(tournament_id: int, team_id: int, user_already_in_team: b
             keyboard.row(InlineKeyboardButton(text="Внести оплату",
                                               callback_data=f"pay-for-team_{team_id}_{tournament_id}"))
 
-    # Кнопка для либеро
-    keyboard.row(InlineKeyboardButton(text="Стать либеро команды", callback_data=f"reg-libero-in-team_{team_id}_{tournament_id}"))
-
     # Если пользователь еще не в команде, у него нет другой команды
-    # и суммарное количество баллов не будет превышать лимит
-    if not user_already_in_team and not user_already_has_another_team and not over_points and not over_players_count \
-            and not wrong_level:
-        keyboard.row(InlineKeyboardButton(text="Записаться в команду",
-                                          callback_data=f"reg-user-in-team_{team_id}_{tournament_id}"))
+    if not user_already_in_team and not user_already_has_another_team and not over_points and not over_players_count:
+        # если суммарное количество баллов не будет превышать лимит
+        if not wrong_level:
+            keyboard.row(InlineKeyboardButton(text="Записаться в команду",
+                                              callback_data=f"reg-user-in-team_{team_id}_{tournament_id}"))
+        # предлагаем стать либеро
+        elif not over_players_count:
+            keyboard.row(InlineKeyboardButton(text="Стать либеро команды",
+                                              callback_data=f"reg-libero-in-team_{team_id}_{tournament_id}"))
     # Если уже зарегистрирован
     elif user_already_in_team:
         keyboard.row(InlineKeyboardButton(text="Выйти из команды",
