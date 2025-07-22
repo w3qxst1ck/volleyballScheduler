@@ -20,6 +20,7 @@ TOURNAMENT_POINTS = {
 # LEVEL:POINTS
 USER_POINTS = {
     "male": {
+        1: 1,
         2: 1,
         3: 3,
         4: 4,
@@ -28,6 +29,7 @@ USER_POINTS = {
         7: 8,
     },
     "female": {
+        1: 1,
         2: 1,
         3: 1,
         4: 2,

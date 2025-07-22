@@ -1,12 +1,10 @@
 from typing import Any, List
 
 from aiogram import Router, types, F, Bot
-from aiogram.enums import ParseMode
 from aiogram.filters import or_f
 from aiogram.fsm.context import FSMContext
 
-from database.schemas import TeamUsers, User, Tournament, TournamentTeams, TournamentPayment
-from logger import logger
+from database.schemas import TeamUsers, User, Tournament, TournamentPayment
 from routers.middlewares import CheckPrivateMessageMiddleware, DatabaseMiddleware
 from routers import keyboards as kb, messages as ms
 from routers.fsm_states import RegNewTeamFSM
@@ -92,7 +90,7 @@ async def register_new_team(callback: types.CallbackQuery, state: FSMContext, se
     tournament = await AsyncOrm.get_tournament_by_id(tournament_id, session)
 
     # проверяем допустимый ли уровень для создания команды
-    if user.level > tournament.level or user.level == 1:
+    if user.level > tournament.level:
         msg = f"❗ Вы не можете участвовать в турнире уровня {settings.tournament_points[tournament.level][0]}"
         await callback.message.edit_text(
             msg,
@@ -237,7 +235,7 @@ async def team_card(callback: types.CallbackQuery, session: Any) -> None:
             over_players_count = True
 
         # проверяем позволяет ли уровень игрока записаться
-        if user.level == 1 or user.level > tournament.level:
+        if user.level > tournament.level:
             wrong_level = True
 
     message = ms.team_card(team, user_already_in_team, user_already_has_another_team, over_points, over_players_count,

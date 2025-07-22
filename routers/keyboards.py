@@ -610,6 +610,9 @@ def team_card_keyboard(tournament_id: int, team_id: int, user_already_in_team: b
             keyboard.row(InlineKeyboardButton(text="Внести оплату",
                                               callback_data=f"pay-for-team_{team_id}_{tournament_id}"))
 
+    # Кнопка для либеро
+    keyboard.row(InlineKeyboardButton(text="Стать либеро команды", callback_data=f"reg-libero-in-team_{team_id}_{tournament_id}"))
+
     # Если пользователь еще не в команде, у него нет другой команды
     # и суммарное количество баллов не будет превышать лимит
     if not user_already_in_team and not user_already_has_another_team and not over_points and not over_players_count \
@@ -648,13 +651,20 @@ def yes_no_leave_team_keyboard(user_is_team_leader: bool, team_id: int, tourname
     return keyboard
 
 
-def yes_no_accept_user_in_team_keyboard(team_id: int, user_id: int, tournament_id: int) -> InlineKeyboardBuilder:
+def yes_no_accept_user_in_team_keyboard(team_id: int, user_id: int, tournament_id: int, for_libero: bool = False) -> InlineKeyboardBuilder:
     """Клавиатура подтверждения принятия игрока в команду"""
     keyboard = InlineKeyboardBuilder()
-    keyboard.row(InlineKeyboardButton(text="Да",
-                                      callback_data=f"accept-user-in-team_{team_id}_{user_id}_{tournament_id}"))
-    keyboard.row(InlineKeyboardButton(text="Нет",
-                                      callback_data=f"refuse-user-in-team_{team_id}_{user_id}_{tournament_id}"))
+
+    # Для назначения либеро
+    if for_libero:
+        keyboard.row(InlineKeyboardButton(text="Да", callback_data=f"accept-libero-in-team_{team_id}_{user_id}_{tournament_id}"))
+        keyboard.row(InlineKeyboardButton(text="Нет", callback_data=f"refuse-libero-in-team_{team_id}_{user_id}_{tournament_id}"))
+
+    # Для приема обычных игроков
+    else:
+        keyboard.row(InlineKeyboardButton(text="Да", callback_data=f"accept-user-in-team_{team_id}_{user_id}_{tournament_id}"))
+        keyboard.row(InlineKeyboardButton(text="Нет", callback_data=f"refuse-user-in-team_{team_id}_{user_id}_{tournament_id}"))
+
     return keyboard
 
 

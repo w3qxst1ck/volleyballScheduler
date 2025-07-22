@@ -342,3 +342,42 @@ def message_for_team_leader(user: User, team: TeamUsers, tournament: Tournament)
               f"Добавить игрока в команду?"
 
     return message
+
+
+def message_for_team_leader_about_libero(user: User, team: TeamUsers, tournament: Tournament,
+                                         already_have_libero: bool, new_player: bool,
+                                         team_libero: User | None = None) -> str:
+    """Оповещение капитана о принятии либеро в команду"""
+    converted_date = convert_date_named_month(tournament.date)
+
+    # Если это новый игрок
+    if new_player:
+        # Если либеро уже есть
+        if already_have_libero and team_libero:
+            message = f"<a href='tg://user?id={user.tg_id}'>{user.firstname} {user.lastname}</a> ({settings.levels[user.level]}) " \
+                      f"хочет присоединиться к вашей команде <b>{team.title}</b> в качестве <b>либеро</b> вместо игрока " \
+                      f"<a href='tg://user?id={team_libero.tg_id}'>{team_libero.firstname} {team_libero.lastname}</a> ({settings.levels[team_libero.level]})" \
+                      f" на турнир \"{tournament.title}\" {converted_date}\n\nДобавить игрока в команду?"
+
+        # Если либеро еще нет
+        else:
+            message = f"<a href='tg://user?id={user.tg_id}'>{user.firstname} {user.lastname}</a> ({settings.levels[user.level]}) " \
+                      f"хочет присоединиться к вашей команде <b>{team.title}</b> в качестве <b>либеро</b> на турнир \"{tournament.title}\" {converted_date}\n\n" \
+                      f"Добавить игрока в команду?"
+
+    # Если игрок уже в команде
+    else:
+        # Если либеро уже есть
+        if already_have_libero and team_libero:
+            message = f"<a href='tg://user?id={user.tg_id}'>{user.firstname} {user.lastname}</a> ({settings.levels[user.level]}) " \
+                      f"хочет стать <b>либеро</b> вашей команды <b>{team.title}</b> вместо игрока " \
+                      f"<a href='tg://user?id={team_libero.tg_id}'>{team_libero.firstname} {team_libero.lastname}</a> ({settings.levels[team_libero.level]})" \
+                      f" на турнир \"{tournament.title}\" {converted_date}\n\nПодтвердите или отклоните запрос"
+
+        # Если либеро еще нет
+        else:
+            message = f"<a href='tg://user?id={user.tg_id}'>{user.firstname} {user.lastname}</a> ({settings.levels[user.level]}) " \
+                      f"хочет стать <b>либеро</b> вашей команды <b>{team.title}</b> на турнир \"{tournament.title}\" {converted_date}\n\n" \
+                      f"Подтвердите или отклоните запрос"
+
+    return message
