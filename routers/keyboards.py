@@ -217,7 +217,7 @@ def my_event_card_keyboard(payment: Payment, reserved_event: bool = False) -> In
 
 
 def tournament_card_keyboard(tournament: Tournament, user_id: int, back_to: str, main_teams: list[TeamUsers],
-                             reserve_teams: List[TeamUsers]) -> InlineKeyboardBuilder:
+                             reserve_teams: List[TeamUsers], wrong_level: bool = False) -> InlineKeyboardBuilder:
     """Зарегистрироваться на чемпионат"""
     keyboard = InlineKeyboardBuilder()
     user_already_has_team: bool = False
@@ -251,11 +251,13 @@ def tournament_card_keyboard(tournament: Tournament, user_id: int, back_to: str,
 
     # проверка не состоит ли участник в другой команде
     if not user_already_has_team:
+        # если уровень не подходит записаться нельзя
+        if not wrong_level:
         # проверка свободных мест для команд
-        if len(main_teams) < tournament.max_team_count:
-            keyboard.row(InlineKeyboardButton(text=f"✍️ Зарегистрировать команду", callback_data=f"register-new-team_{tournament.id}"))
-        else:
-            keyboard.row(InlineKeyboardButton(text=f"📝 Записать команду в резерв", callback_data=f"register-reserve-team_{tournament.id}"))
+            if len(main_teams) < tournament.max_team_count:
+                keyboard.row(InlineKeyboardButton(text=f"✍️ Зарегистрировать команду", callback_data=f"register-new-team_{tournament.id}"))
+            else:
+                keyboard.row(InlineKeyboardButton(text=f"📝 Записать команду в резерв", callback_data=f"register-reserve-team_{tournament.id}"))
     keyboard.row(InlineKeyboardButton(text=f"🔙 назад", callback_data=f"{back_to}"))
 
     return keyboard
@@ -609,6 +611,8 @@ def team_card_keyboard(tournament_id: int, team_id: int, user_already_in_team: b
         if not payment:
             keyboard.row(InlineKeyboardButton(text="Внести оплату",
                                               callback_data=f"pay-for-team_{team_id}_{tournament_id}"))
+        keyboard.row(
+            InlineKeyboardButton(text="Выбрать либеро", callback_data=f"choose-libero_{team_id}_{tournament_id}"))
 
     # Если пользователь еще не в команде, у него нет другой команды
     if not user_already_in_team and not user_already_has_another_team and not over_points and not over_players_count:
@@ -626,6 +630,32 @@ def team_card_keyboard(tournament_id: int, team_id: int, user_already_in_team: b
                                           callback_data=f"leave-user-from-team_{team_id}_{tournament_id}"))
 
     keyboard.row(InlineKeyboardButton(text="🔙 назад", callback_data=back_to))
+
+    return keyboard
+
+
+def choose_libero(team: TeamUsers, tournament_id: int) -> InlineKeyboardBuilder:
+    """Клавиатура выбора либеро для капитана"""
+    keyboard = InlineKeyboardBuilder()
+
+    for idx, user in enumerate(team.users, start=1):
+        if user.id == team.team_libero_id:
+            continue
+        keyboard.row(InlineKeyboardButton(text=f"{user.firstname} {user.lastname}", callback_data=f"choose-libero-user_{team.team_id}_{tournament_id}_{user.id}"))
+
+    keyboard.row(InlineKeyboardButton(text="🔙 назад", callback_data=f"register-in-team_{team.team_id}_{tournament_id}_mm"))
+
+    return keyboard
+
+
+def choose_libero_accept(team_id: int, tournament_id: int, user_id: int) -> InlineKeyboardBuilder:
+    """Клавиатура подтверждения выбора либеро"""
+    keyboard = InlineKeyboardBuilder()
+
+    keyboard.row(InlineKeyboardButton(text="Да", callback_data=f"choose-liber-accept_{team_id}_{tournament_id}_{user_id}"))
+    keyboard.row(InlineKeyboardButton(text="Нет", callback_data=f"choose-libero_{team_id}_{tournament_id}"))
+
+    keyboard.adjust(2)
 
     return keyboard
 

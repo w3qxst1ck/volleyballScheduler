@@ -308,7 +308,7 @@ def team_card(team: TeamUsers, user_already_in_team, user_already_has_another_te
     elif over_players_count:
         already_in_team = "\n❗ Вы не можете записаться в команду, так как команда уже заполнена"
     elif wrong_level:
-        already_in_team = "\n❗ Вы не можете записаться в команду, так как у вас неподходящий уровень"
+        already_in_team = "\n❗ Вы можете записаться в команду только в качестве либеро, так как у вас неподходящий уровень"
 
     # Статус оплаты
     paid = "\n❌ Участие не оплачено"
@@ -346,19 +346,25 @@ def message_for_team_leader(user: User, team: TeamUsers, tournament: Tournament)
 
 def message_for_team_leader_about_libero(user: User, team: TeamUsers, tournament: Tournament,
                                          already_have_libero: bool, over_points: bool,
-                                         team_libero: User | None = None) -> str:
+                                         team_libero: User | None = None, wrong_level: bool = False) -> str:
     """Оповещение капитана о принятии либеро в команду"""
     converted_date = convert_date_named_month(tournament.date)
 
     # если либеро уже есть
     if already_have_libero:
         # Если перебор по очкам при замене либеро
+        reason = ""
         if over_points:
+            reason = ", так как суммарное количество баллов превысило допустимое для этого турнира"
+        if wrong_level:
+            reason = ", так как уровень игрока превышает допустимый на турнире"
+
+        if wrong_level or over_points:
             message = f"<a href='tg://user?id={user.tg_id}'>{user.firstname} {user.lastname}</a> ({settings.levels[user.level]}) " \
                       f"хочет присоединиться к вашей команде <b>{team.title}</b> в качестве <b>либеро</b> вместо игрока " \
                       f"<a href='tg://user?id={team_libero.tg_id}'>{team_libero.firstname} {team_libero.lastname}</a> ({settings.levels[team_libero.level]})" \
-                      f" на турнир \"{tournament.title}\" {converted_date}\n❗Игрок <a href='tg://user?id={team_libero.tg_id}'>{team_libero.firstname} {team_libero.lastname}</a> ({settings.levels[team_libero.level]}) " \
-                      f"будет исключен из команды, так как суммарное количество баллов превысит допустимое для этого турнира" \
+                      f" на турнир \"{tournament.title}\" {converted_date}\n\n❗Игрок <a href='tg://user?id={team_libero.tg_id}'>{team_libero.firstname} {team_libero.lastname}</a> ({settings.levels[team_libero.level]}) " \
+                      f"будет исключен из команды{reason}" \
                       f"\n\nДобавить игрока в команду?"
 
         # Нет перебора по очкам

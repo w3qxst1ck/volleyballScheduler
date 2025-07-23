@@ -72,7 +72,12 @@ async def user_tournament_handler(callback: types.CallbackQuery, session: Any, s
     else:
         back_to = f"events-date_{utils.convert_date(tournament.date)}"
 
-    keyboard = kb.tournament_card_keyboard(tournament, user.id, back_to, main_teams, reserve_teams)
+    # Проверка уровня
+    wrong_level = False
+    if user.level > tournament.level:
+        wrong_level = True
+
+    keyboard = kb.tournament_card_keyboard(tournament, user.id, back_to, main_teams, reserve_teams, wrong_level)
 
     await callback.message.edit_text(
         msg,

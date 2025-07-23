@@ -727,7 +727,7 @@ class AsyncOrm:
         try:
             rows = await session.fetch(
                 """
-                SELECT t.id AS team_id, t.title AS title, t.team_leader_id as team_leader_id, t.created_at, t.reserve,
+                SELECT t.id AS team_id, t.title AS title, t.team_leader_id as team_leader_id, t.team_libero_id AS team_libero_id, t.created_at, t.reserve,
                 u.id AS user_id, u.tg_id AS tg_id, u.username AS username, u.firstname AS firstname, 
                 u.lastname AS lastname, u.level AS user_level, u.gender
                 FROM teams AS t
@@ -766,6 +766,7 @@ class AsyncOrm:
                         team_id=row["team_id"],
                         title=row["title"],
                         team_leader_id=row["team_leader_id"],
+                        team_libero_id=row["team_libero_id"],
                         created_at=row["created_at"],
                         reserve=row["reserve"],
                         users=teams_users[row["title"]]
@@ -1070,7 +1071,7 @@ class AsyncOrm:
     async def update_team_libero(team_id: int, user_id: int, session: Any) -> None:
         """Обновляет либеро в команде"""
         try:
-            session.execute(
+            await session.execute(
                 """
                 UPDATE teams 
                 SET team_libero_id = $1
