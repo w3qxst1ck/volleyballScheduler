@@ -444,6 +444,11 @@ async def delete_team_from_tournament(callback: types.CallbackQuery, session: An
     else:
         try:
             await AsyncOrm.delete_user_from_team(team_id, user.id, session)
+
+            # Проверяем был ли пользователь либеро, если да, то убираем запись о нем
+            if team.team_libero_id == user.id:
+                await AsyncOrm.remove_libero_from_team(team_id, user.id, session)
+
             await callback.message.edit_text(
                 f"✅ Вы вышли из команды \"{team.title}\"!",
                 reply_markup=keyboard.as_markup()
@@ -459,7 +464,7 @@ async def delete_team_from_tournament(callback: types.CallbackQuery, session: An
             except Exception:
                 pass
 
-        except:
+        except Exception as e:
             await callback.message.edit_text("Ошибка при выходе из команды, попробуйте позже")
             return
 

@@ -1083,3 +1083,20 @@ class AsyncOrm:
 
         except Exception as e:
             logger.error(f"Ошибка при обновлении либеро на {user_id} в команде {team_id}: {e}")
+
+    @staticmethod
+    async def remove_libero_from_team(team_id: int, user_id: int, session: Any) -> None:
+        """Удаление либеро у команды в связи с выходом игрока из команды"""
+        try:
+            await session.execute(
+                """
+                UPDATE teams
+                SET team_libero_id = null
+                WHERE id = $1
+                """,
+                team_id
+            )
+            logger.info(f"Либеро команды {team_id} удален, в связи с выходом игрока id {user_id} из команды")
+
+        except Exception as e:
+            logger.error(f"Ошибка при удалении записи о либеро id {user_id} из команды {team_id}: {e}")

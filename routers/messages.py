@@ -327,8 +327,19 @@ def team_card(team: TeamUsers, user_already_in_team, user_already_has_another_te
 
     for count, user in enumerate(team.users, start=1):
         message += f"<b>{count}.</b> <a href='tg://user?id={user.tg_id}'>{user.firstname} {user.lastname}</a> {settings.levels[user.level]}"
-        if user.id == team.team_leader_id:
+
+        # пометка и капитан и либеро
+        if user.id == team.team_leader_id and user.id == team.team_libero_id:
+            message += " (капитан, либеро)"
+
+        # пометка капитана
+        elif user.id == team.team_leader_id:
             message += " (капитан)"
+
+        # пометка либеро
+        elif user.id == team.team_libero_id:
+            message += " (либеро)"
+
         message += "\n"
 
     return message

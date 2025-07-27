@@ -326,7 +326,7 @@ def payment_tournament_confirm_keyboard(team_id: int, tournament_id: int) -> Inl
             text="Оплатил(а)", callback_data=f"t-paid_{team_id}_{tournament_id}")
     )
 
-    keyboard.row(InlineKeyboardButton(text="🔙 назад", callback_data=f"register-in-team_{team_id}_{tournament_id}"))
+    keyboard.row(InlineKeyboardButton(text="🔙 назад", callback_data=f"register-in-team_{team_id}_{tournament_id}_mm"))
 
     return keyboard
 
@@ -669,13 +669,13 @@ def yes_no_leave_team_keyboard(user_is_team_leader: bool, team_id: int, tourname
         keyboard.row(InlineKeyboardButton(text="Да",
                                           callback_data=f"c-del-team_{team_id}_{tournament_id}"))
         keyboard.row(InlineKeyboardButton(text="Нет",
-                                          callback_data=f"register-in-team_{team_id}_{tournament_id}"))
+                                          callback_data=f"register-in-team_{team_id}_{tournament_id}_mm"))
     # Для обычных пользователей
     else:
         keyboard.row(InlineKeyboardButton(text="Да",
                                           callback_data=f"del-team_{team_id}_{tournament_id}"))
         keyboard.row(InlineKeyboardButton(text="Нет",
-                                          callback_data=f"register-in-team_{team_id}_{tournament_id}"))
+                                          callback_data=f"register-in-team_{team_id}_{tournament_id}_mm"))
 
     # keyboard.row(InlineKeyboardButton(text="🔙 назад", callback_data=f"user-tournament_{tournament_id}"))
     keyboard.adjust(2)
