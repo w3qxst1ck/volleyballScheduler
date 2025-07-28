@@ -262,6 +262,28 @@ class AsyncOrm:
             await session.flush()
             await session.commit()
 
+    @staticmethod
+    async def delete_old_tournaments(expire_days: int, session: Any):
+        """Удаление турниров которые были позднее expire_days"""
+        expire_date = datetime.datetime.now() - datetime.timedelta(days=expire_days)
+
+        try:
+            tournament_id = await session.fetchval(
+                """
+                DELETE FROM tournaments
+                WHERE date < $1
+                RETURNING id
+                """,
+                expire_date
+            )
+            logger.info(f"Турнир id {tournament_id} автоматически удален как прошедший")
+
+        except Exception as e:
+            logger.error(f"Ошибка при автоматическом удалении турнира {datetime.datetime.now()}: {e}")
+
+
+
+
     # EVENTS_USERS
     @staticmethod
     async def add_user_to_event(event_id: int, user_id: int):
@@ -1100,3 +1122,20 @@ class AsyncOrm:
 
         except Exception as e:
             logger.error(f"Ошибка при удалении записи о либеро id {user_id} из команды {team_id}: {e}")
+
+    @staticmethod
+    async def update_tournament_status_to_false(tournament_id: int, session: Any):
+        """Перевод турнира в неактивные"""
+        try:
+            await session.execute(
+                """
+                UPDATE tournaments
+                SET active = False
+                WHERE id = $1
+                """,
+                tournament_id
+            )
+            logger.info(f"Турнир id {tournament_id} переведен в неактивные {datetime.datetime.now()}")
+
+        except Exception as e:
+            logger.error(f"Ошибка при переводе турнира id {tournament_id} в неактивные: {e}")
