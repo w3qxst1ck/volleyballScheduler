@@ -256,6 +256,7 @@ def notify_tournament_message(tournament: Tournament) -> str:
 
     return message
 
+
 def notify_canceled_event(event: EventRel) -> str:
     """Сообщение об отмене мероприятия в связи с нехваткой участников"""
     event_date = convert_date(event.date)

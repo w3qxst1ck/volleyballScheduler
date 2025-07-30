@@ -850,7 +850,7 @@ class AsyncOrm:
             raise
 
     @staticmethod
-    async def delete_team_from_tournament(team_id: int, tg_id: str, session: Any) -> None:
+    async def delete_team_from_tournament(team_id: int, tg_id: str | None, session: Any) -> None:
         """Удаление всей команды с турнира"""
         try:
             async with session.transaction():
@@ -868,8 +868,10 @@ class AsyncOrm:
                     """,
                     team_id
                 )
-
-            logger.info(f"Пользователь tg_id {tg_id} удалил команду {team_id}")
+            if not tg_id:
+                logger.info(f"Команда {team_id} автоматически удалена с турнира")
+            else:
+                logger.info(f"Пользователь tg_id {tg_id} удалил команду {team_id}")
 
         except Exception as e:
             logger.error(f"Ошибка при удалении команды {team_id} с турнира: {e}")

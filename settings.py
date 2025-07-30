@@ -77,6 +77,8 @@ class Settings(BaseSettings):
     admin_phone: str
     support_contact: str
     address: str = "Санкт-Петербург, Институтский пер., 5Н"
+    notify_about_payment_days: int = 5
+    kick_team_without_pay_days: int = 4
     db: Database = Database()
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
