@@ -28,9 +28,72 @@ async def run_every_day(bot: aiogram.Bot):
     await delete_old_events(session)    # удаление старых событий
 
 
+async def kick_from_tournaments_by_payments(bot: aiogram.Bot):
+    """Ежедневное удаление команд, которые не оплатили турнир меньше чем за 4 дня"""
+    session = await asyncpg.connect(
+        user=settings.db.postgres_user,
+        host=settings.db.postgres_host,
+        password=settings.db.postgres_password,
+        port=settings.db.postgres_port,
+        database=settings.db.postgres_db
+    )
+
+    tournaments: list[Tournament] = await AsyncOrm.get_all_tournaments(10, session)
+    now = datetime.datetime.now(tz=pytz.timezone("Europe/Moscow"))
+
+    for tournament in tournaments:
+        if now + datetime.timedelta(days=settings.kick_team_without_pay_days) > \
+                tournament.date.astimezone(tz=pytz.timezone("Europe/Moscow")) - datetime.timedelta(hours=3):
+
+            teams: list[TeamUsers] = await AsyncOrm.get_teams_with_users(tournament.id, session)
+
+            for team in teams:
+                payment = await AsyncOrm.get_tournament_payment_by_team_id(team.team_id, session)
+
+                # Если платеж не подтвержден и команда не в резерве
+                if not payment or (not team.reserve and not payment.paid_confirm):
+
+                    # удаляем команду с турнира
+                    await AsyncOrm.delete_team_from_tournament(team.team_id, None, session)
+
+                    # оповещаем игроков
+                    date = utils.convert_date(tournament.date)
+                    time = utils.convert_time(tournament.date)
+                    msg_for_user = f"🔔 <b>Автоматическое уведомление</b>\n\n" \
+                                   f"Ваша команда <b>{team.title}</b> удалена с турнира {tournament.type} " \
+                                   f"\"{tournament.title}\" {date} {time}, так как участие не было оплачено\n\n" \
+                                   f"Для уточнения деталей вы можете связаться с администратором @{settings.main_admin_url}"
+                    for user in team.users:
+                        try:
+                            await bot.send_message(user.tg_id, msg_for_user)
+                        except:
+                            pass
+
+                    # добавляем команду из резерва, если резерв есть
+                    first_reserve_team: TeamUsers | None = await AsyncOrm.get_first_reserve_team(tournament.id, session)
+                    if first_reserve_team:
+                        # переводим из резерва в основу
+                        await AsyncOrm.transfer_team_from_reserve(team.team_id, session)
+
+                        # TODO согласовать message
+                        date = utils.convert_date(tournament.date)
+                        time = utils.convert_time(tournament.date)
+                        msg_for_users = f"🔔 <b>Автоматическое уведомление</b>\n\n" \
+                                        f"Ваша команда <b>{team.title}</b> переведена из резерва в <b>основной состав</b> " \
+                                        f"на турнире {tournament.type} \"{tournament.title}\" {date} {time}\n\n" \
+                                        f"Капитану команды необходимо внести оплату в течение дня\n\n" \
+                                        f"Для уточнения деталей вы можете связаться с администратором @{settings.main_admin_url}"
+
+                        # оповещаем игроков команды
+                        for user in first_reserve_team.users:
+                            try:
+                                await bot.send_message(user.tg_id, msg_for_users)
+                            except:
+                                pass
+
+
 async def run_every_hour(bot: aiogram.Bot) -> None:
     """Выполняется каждый час"""
-
     session = await asyncpg.connect(
         user=settings.db.postgres_user,
         host=settings.db.postgres_host,
@@ -96,7 +159,7 @@ async def update_events(bot: aiogram.Bot, session: Any):
                     pass
 
     # Только для турниров
-    tournaments: list[Tournament] = await AsyncOrm.get_all_tournaments(0, session)
+    tournaments: list[Tournament] = await AsyncOrm.get_all_tournaments(1, session)
 
     for tournament in tournaments:
         # сравниваем текущее время + 1 ч с временем события
@@ -122,7 +185,7 @@ async def update_events(bot: aiogram.Bot, session: Any):
 
                 for team in reserve_teams:
                     team_leader: User = await AsyncOrm.get_user_by_id(team.team_leader_id)
-                    msg_for_admin += f"<a href='tg://user?id={team_leader.tg_id}'>{team_leader.firstname} {team_leader.lastname}</a>" \
+                    msg_for_admin += f"<a href='tg://user?id={team_leader.tg_id}'>{team_leader.firstname} {team_leader.lastname}</a> " \
                                      f"(команда <b>{team.title}</b>) - {tournament.price} руб.\n"
 
                 # отправляем сообщение администратору
@@ -185,16 +248,16 @@ async def check_team_payment_for_tournament(session: Any, bot: aiogram.Bot) -> N
                 teams: list[TeamUsers] = await AsyncOrm.get_teams_with_users(tournament.id, session)
 
                 for team in teams:
-                    payment = await AsyncOrm.get_tournament_payment_by_team_id(team.id, session)
+                    payment = await AsyncOrm.get_tournament_payment_by_team_id(team.team_id, session)
 
-                    # Если платеж не подтвержден и команда не в резерве
-                    if not team.reserve and not payment.paid_confirm:
+                    # Если платежа еще нет или если платеж не подтвержден, а команда не в резерве
+                    if not payment or (not team.reserve and not payment.paid_confirm):
                         captain: User = await AsyncOrm.get_user_by_id(team.team_leader_id)
                         date = utils.convert_date(tournament.date)
                         time = utils.convert_time(tournament.date)
                         msg_for_captain = f"🔔 <b>Автоматическое уведомление</b>\n\n" \
                                           f"Ваша команда <b>{team.title}</b> еще не внесла оплату за турнир {tournament.type} " \
-                                          f"\"{tournament.title}\" {date} {time}\n\nВам необходимо внести оплату в течение одного дня," \
+                                          f"\"{tournament.title}\" {date} {time}\n\nВам необходимо внести оплату в течение одного дня, " \
                                           f"иначе команда будет удалена с турнира\n\n" \
                                           f"Для уточнения деталей вы можете связаться с администратором @{settings.main_admin_url}"
 
@@ -202,56 +265,6 @@ async def check_team_payment_for_tournament(session: Any, bot: aiogram.Bot) -> N
                             await bot.send_message(captain.tg_id, msg_for_captain)
                         except:
                             pass
-
-        # За 4 дней до турнира проверяем оплатила ли команда, если нет, то удаляем с турнира и добавляем из резерва
-        elif now + datetime.timedelta(days=settings.kick_team_without_pay_days) > \
-                tournament.date.astimezone(tz=pytz.timezone("Europe/Moscow")) - datetime.timedelta(hours=3):
-
-            teams: list[TeamUsers] = await AsyncOrm.get_teams_with_users(tournament.id, session)
-
-            for team in teams:
-                payment = await AsyncOrm.get_tournament_payment_by_team_id(team.id, session)
-
-                # Если платеж не подтвержден и команда не в резерве
-                if not team.reserve and not payment.paid_confirm:
-
-                    # удаляем команду с турнира
-                    await AsyncOrm.delete_team_from_tournament(team.id, None, session)
-
-                    # оповещаем игроков
-                    date = utils.convert_date(tournament.date)
-                    time = utils.convert_time(tournament.date)
-                    msg_for_user = f"🔔 <b>Автоматическое уведомление</b>\n\n" \
-                                   f"Ваша команда <b>{team.title}</b> удалена с турнира {tournament.type} " \
-                                   f"\"{tournament.title}\" {date} {time}, так как участие не было оплачено\n\n" \
-                                   f"Для уточнения деталей вы можете связаться с администратором @{settings.main_admin_url}"
-                    for user in team.users:
-                        try:
-                            await bot.send_message(user.tg_id, msg_for_user)
-                        except:
-                            pass
-
-                    # добавляем команду из резерва, если резерв есть
-                    first_reserve_team: TeamUsers | None = await AsyncOrm.get_first_reserve_team(tournament.id, session)
-                    if first_reserve_team:
-                        # переводим из резерва в основу
-                        await AsyncOrm.transfer_team_from_reserve(team.team_id, session)
-
-                        # TODO согласовать message
-                        date = utils.convert_date(tournament.date)
-                        time = utils.convert_time(tournament.date)
-                        msg_for_users = f"🔔 <b>Автоматическое уведомление</b>\n\n" \
-                                        f"Ваша команда <b>{team.title}</b> переведена из резерва в <b>основной состав</b> " \
-                                        f"на турнире {tournament.type} \"{tournament.title}\" {date} {time}\n\n" \
-                                        f"Капитану команды необходимо внести оплату в течение дня\n\n" \
-                                        f"Для уточнения деталей вы можете связаться с администратором @{settings.main_admin_url}"
-
-                        # оповещаем игроков команды
-                        for user in first_reserve_team.users:
-                            try:
-                                await bot.send_message(user.tg_id, msg_for_users)
-                            except:
-                                pass
 
 
 async def create_players_excel():

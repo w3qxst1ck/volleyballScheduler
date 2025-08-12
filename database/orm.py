@@ -276,13 +276,11 @@ class AsyncOrm:
                 """,
                 expire_date
             )
-            logger.info(f"Турнир id {tournament_id} автоматически удален как прошедший")
+            if tournament_id:
+                logger.info(f"Турнир id {tournament_id} автоматически удален как прошедший")
 
         except Exception as e:
             logger.error(f"Ошибка при автоматическом удалении турнира {datetime.datetime.now()}: {e}")
-
-
-
 
     # EVENTS_USERS
     @staticmethod
@@ -1132,7 +1130,7 @@ class AsyncOrm:
             await session.execute(
                 """
                 UPDATE tournaments
-                SET active = False
+                SET active = false
                 WHERE id = $1
                 """,
                 tournament_id

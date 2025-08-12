@@ -247,7 +247,7 @@ def tournament_card_keyboard(tournament: Tournament, user_id: int, back_to: str,
                 registered = "✅️ "
                 user_already_has_team = True
 
-            keyboard.row(InlineKeyboardButton(text=f"{registered}{team.title} (резерв)", callback_data=f"register-in-team_{team.team_id}_{tournament.id}"))
+            keyboard.row(InlineKeyboardButton(text=f"{registered}{team.title} (резерв)", callback_data=f"register-in-team_{team.team_id}_{tournament.id}_mm"))
 
     # проверка не состоит ли участник в другой команде
     if not user_already_has_team:
