@@ -49,12 +49,12 @@ async def start_bot() -> None:
     scheduler = AsyncIOScheduler(timezone="Europe/Moscow")
 
     # оповещение для пользователей + удаление старых неактивных событий 9 утра
-    scheduler.add_job(apsched.run_every_day, trigger="cron", year='*', month='*', day="*", hour=9, minute=0,
+    scheduler.add_job(apsched.run_every_day, trigger="cron", year='*', month='*', day="*", hour="*", minute="*",
                       second=0, start_date=datetime.now(), kwargs={"bot": bot})
     # удаление команд не оплативших турнир за 4 дня в 4 утра
     scheduler.add_job(apsched.kick_from_tournaments_by_payments, trigger="cron", year='*', month='*', day="*", hour=4,
                       minute=0, second=0, start_date=datetime.now(), kwargs={"bot": bot})
-    # проверка мероприятия на минимальное кол-во участников + перевод событий в неактивные
+    # проверка мероприятия на минимальное кол-во участников + перевод событий в неактивные в 01 минуту
     scheduler.add_job(apsched.run_every_hour, trigger="cron", year='*', month='*', day="*", hour="*", minute=1,
                       second=0, start_date=datetime.now(), kwargs={"bot": bot})
     # создание excel файла

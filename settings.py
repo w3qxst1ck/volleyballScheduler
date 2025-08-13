@@ -79,6 +79,8 @@ class Settings(BaseSettings):
     address: str = "Санкт-Петербург, Институтский пер., 5Н"
     notify_about_payment_days: int = 5
     kick_team_without_pay_days: int = 4
+    tournament_min_team_hours: int = 10
+    tournament_min_users_days: int = 1
     db: Database = Database()
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
