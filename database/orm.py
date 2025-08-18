@@ -692,7 +692,7 @@ class AsyncOrm:
                 """
                 SELECT t.id AS team_id, t.title AS title, t.team_leader_id as team_leader_id, t.created_at, t.reserve,
                 u.id AS user_id, u.tg_id AS tg_id, u.username AS username, u.firstname AS firstname, u.gender,
-                u.lastname AS lastname, u.level AS user_level 
+                u.lastname AS lastname, u.level AS user_level, t.team_libero_id as team_libero_id
                 FROM teams AS t
                 JOIN teams_users AS tu ON t.id = tu.team_id
                 JOIN users AS u ON tu.user_id=u.id
@@ -730,6 +730,7 @@ class AsyncOrm:
                         team_id=row["team_id"],
                         title=row["title"],
                         team_leader_id=row["team_leader_id"],
+                        team_libero_id=row["team_libero_id"],
                         created_at=row["created_at"],
                         reserve=row["reserve"],
                         users=teams_users[row["title"]]

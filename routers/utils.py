@@ -236,12 +236,11 @@ def calculate_team_points(users: List[User], libero_id: int = None) -> int:
 
     # берем баллы 6 сильнейших
     for user in sorted_users[:6]:
-
         # если среди сильнейших есть либеро
         if user.id == libero_id:
             # случай когда кол-во человек в команде больше 6
             if len(sorted_users) > 6:
-                extra_user = sorted_users[7]
+                extra_user = sorted_users[6]
                 user_points = settings.user_points[extra_user.gender][extra_user.level]
                 team_points += user_points
 

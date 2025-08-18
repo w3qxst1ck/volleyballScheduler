@@ -42,7 +42,6 @@ async def run_every_hour(bot: aiogram.Bot) -> None:
     await update_events(bot, session)
     await check_min_users_count(bot)
     await check_min_team_count(bot, session)  # проверка на минимальное количество команд
-    # TODO проверку на минимальное кол-во команд для турниров и кол-во участников в команде
 
 
 async def kick_from_tournaments_by_payments(bot: aiogram.Bot):
@@ -233,7 +232,6 @@ async def check_min_players_in_team(bot: aiogram.Bot, session: Any):
                     if first_reserve_team:
                         await AsyncOrm.transfer_team_from_reserve(first_reserve_team.team_id, session)
 
-                        # TODO согласовать message
                         date = utils.convert_date(tournament.date)
                         time = utils.convert_time(tournament.date)
                         msg_for_users = f"🔔 <b>Автоматическое уведомление</b>\n\n" \

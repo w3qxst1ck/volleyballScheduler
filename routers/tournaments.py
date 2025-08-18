@@ -20,7 +20,7 @@ router.message.middleware.register(DatabaseMiddleware())
 router.callback_query.middleware.register(DatabaseMiddleware())
 
 
-# FOR TOURNAMENTS
+# TOURNAMENT CARD
 @router.callback_query(or_f(F.data.split("_")[0] == "user-tournament",
                             F.data.split("_")[0] == "my-tournament"))
 async def user_tournament_handler(callback: types.CallbackQuery, session: Any, state: FSMContext) -> None:
@@ -231,7 +231,7 @@ async def team_card(callback: types.CallbackQuery, session: Any) -> None:
     if not user_already_in_team and not user_already_has_another_team:
         # проверяем позволяет ли количество баллов зайти в команду
         team_with_new_user = team.users + [user]
-        team_points = calculate_team_points(team_with_new_user)
+        team_points = calculate_team_points(team_with_new_user, team.team_libero_id)
         if team_points > settings.tournament_points[tournament.level][1]:
             over_points = True
 
@@ -309,7 +309,7 @@ async def accept_refuse_user_in_team(callback: types.CallbackQuery, session: Any
     # прием в команду
     if callback.data.split("_")[0] == "accept-user-in-team":
         team_users = team.users + [user]
-        team_points = calculate_team_points(team_users)
+        team_points = calculate_team_points(team_users, team.team_libero_id)
 
         # проверка на количество участников в команде
         if len(team.users) + 1 > tournament.max_team_players:

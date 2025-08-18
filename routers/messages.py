@@ -39,11 +39,17 @@ def tournament_card_for_user_message(event: Tournament, main_teams: list[TeamUse
     available_places = event.max_team_count - teams_count
     max_points = settings.tournament_points[event.level][0]
 
+    # крайняя дата оплаты
+    payment_days = event.date - datetime.timedelta(days=5)
+    payment_date = convert_date_named_month(payment_days)
+    payment_time = convert_time(payment_days)
+
     message = f"📅 <b>{date}, {time} ({weekday})</b>\n"
     message += f"🏆 <b>\"{event.type}\"</b> ({max_points})\n" \
                f"  • {event.title}\n" \
                f"  • <b>Максимальное кол-во баллов команды:</b> {settings.tournament_points[event.level][1]}\n" \
-               f"💰 <b>Стоимость участия для команды:</b> {event.price} руб.\n\n" \
+               f"💰 <b>Стоимость участия для команды:</b> {event.price} руб.\n" \
+               f"❗ Оплатить участие необходимо до <b>{payment_date} {payment_time}</b>\n\n" \
                f"👥 <b>Количество команд:</b> {teams_count}/{event.max_team_count} (доступно {available_places} мест)\n" \
                f"👥 <b>Количество участников в команде:</b> {event.min_team_players}-{event.max_team_players}\n" \
                f"⚠️ <b>Минимальное количество команд:</b> {event.min_team_count}\n" \
@@ -54,7 +60,7 @@ def tournament_card_for_user_message(event: Tournament, main_teams: list[TeamUse
 
         for count, team in enumerate(main_teams, start=1):
             # баллы команды
-            team_points = calculate_team_points(team.users)
+            team_points = calculate_team_points(team.users, team.team_libero_id)
 
             # убираем баллы при выставлении уровней
             if for_levels:
@@ -67,7 +73,7 @@ def tournament_card_for_user_message(event: Tournament, main_teams: list[TeamUse
 
         for count, team in enumerate(reserve_teams, start=len(main_teams)+1):
             # баллы команды
-            team_points = calculate_team_points(team.users)
+            team_points = calculate_team_points(team.users, team.team_libero_id)
 
             # убираем баллы при выставлении уровней
             if for_levels:
@@ -334,7 +340,7 @@ def team_card(team: TeamUsers, user_already_in_team, user_already_has_another_te
     if not user_already_in_team:
         paid = ""
 
-    team_points = calculate_team_points(team.users)
+    team_points = calculate_team_points(team.users, team.team_libero_id)
     message = f"<b>{team.title}</b>{paid}{already_in_team}\n\nКоличество баллов: <b>{team_points}</b>\nУчастники:\n"
 
     for count, user in enumerate(team.users, start=1):
