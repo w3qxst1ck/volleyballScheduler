@@ -162,7 +162,7 @@ async def event_delete_confirmed_handler(callback: types.CallbackQuery, bot: Bot
 @router.message(Command("add_event"))
 async def add_event_start_handler(message: types.Message, state: FSMContext) -> None:
     """Добавление события, начало AddEventFSM"""
-    msg = await message.answer("Отправьте тип события (например соревнование, тренировка, турнир)",
+    msg = await message.answer("Отправьте тип события (например тренировка, игровой сбор)",
                                reply_markup=kb.cancel_keyboard().as_markup())
 
     await state.set_state(AddEventFSM.type)
