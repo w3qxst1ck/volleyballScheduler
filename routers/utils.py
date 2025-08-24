@@ -218,7 +218,6 @@ async def write_excel_file(data: List[schemas.User]) -> None:
         sheet[d_number].border = border
 
     wb.save("players/players.xlsx")
-    print('DataFrame is written to Excel File successfully.')
 
 
 def calculate_team_points(users: List[User], libero_id: int = None) -> int:
