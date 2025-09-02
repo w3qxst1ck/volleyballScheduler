@@ -122,7 +122,9 @@ async def user_events_dates_handler(callback: types.CallbackQuery, session: Any)
     all_events.extend(events)
     all_events.extend(tournaments)
 
-    events_dates = [event.date for event in all_events]
+    sorted_all_events = sorted(all_events, key=lambda x: x.date)
+
+    events_dates = [event.date for event in sorted_all_events]
     unique_dates = utils.get_unique_dates(events_dates)
 
     msg = "Даты с событиями:"
