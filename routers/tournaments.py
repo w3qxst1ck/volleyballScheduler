@@ -26,7 +26,7 @@ router.callback_query.middleware.register(DatabaseMiddleware())
 async def tournaments_dates(callback: types.CallbackQuery, session: Any) -> None:
     """Вывод дат с турнирами"""
     # берем турниры за ближайшие 10 дней
-    tournaments: list[Tournament] = await AsyncOrm.get_all_tournaments(days_ahead=11, session=session)
+    tournaments: list[Tournament] = await AsyncOrm.get_all_tournaments(days_ahead=31, session=session)
 
     # сортируем по дате
     if tournaments:
