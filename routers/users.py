@@ -114,7 +114,7 @@ async def user_events_dates_handler(callback: types.CallbackQuery, session: Any)
     all_events: list = []
 
     # берем мероприятия за ближайших 10 дней
-    events: list[Event] = await AsyncOrm.get_events(only_active=True, days_ahead=16)
+    events: list[Event] = await AsyncOrm.get_events(only_active=True, days_ahead=11)
 
     # берем турниры за ближайшие 10 дней
     # tournaments: list[Tournament] = await AsyncOrm.get_all_tournaments(days_ahead=16, session=session)
