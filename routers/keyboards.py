@@ -29,16 +29,18 @@ def menu_users_keyboard() -> InlineKeyboardBuilder:
     keyboard = InlineKeyboardBuilder()
     keyboard.row(InlineKeyboardButton(text="🗓️ Все события", callback_data=f"menu_all-events"))
     keyboard.row(InlineKeyboardButton(text="👤 Мой профиль", callback_data=f"menu_profile"))
+    keyboard.row(InlineKeyboardButton(text="🏆 Турниры", callback_data=f"menu_tournaments"))
     keyboard.row(InlineKeyboardButton(text="🏐 Мои события", callback_data=f"menu_my-events"))
 
     keyboard.adjust(2)
     return keyboard
 
 
-@back_button("all-events")
+# @back_button("all-events")
 def events_keyboard(events: list[EventRel | Tournament],
                     user: User,
                     reserved_events: List[ReservedEvent],
+                    for_t: bool = False
                     ) -> InlineKeyboardBuilder:
     """Клавиатура с мероприятиями для вывода пользователю"""
     keyboard = InlineKeyboardBuilder()
@@ -90,27 +92,50 @@ def events_keyboard(events: list[EventRel | Tournament],
                                               callback_data=f"user-event_{event.id}"))
 
     keyboard.adjust(1)
+
+    # разные кнопки назад для всех мероприятий и отдельно турниров
+    if for_t:
+        keyboard.row(InlineKeyboardButton(text="🔙 назад", callback_data=f"menu_tournaments"))
+    else:
+        keyboard.row(InlineKeyboardButton(text="🔙 назад", callback_data=f"back_all-events"))
+
     return keyboard
 
 
 @back_button("user-menu")
-def dates_keyboard(dates: dict[str:int]) -> InlineKeyboardBuilder:
-    """Клавиатура со всеми датами мероприятий"""
+def dates_keyboard(dates: dict[str:int], for_t: bool = False) -> InlineKeyboardBuilder:
+    """Клавиатура со всеми датами мероприятий и турниров
+    Параметр for_t используется для отдельной вкладки с турнирами
+    """
     keyboard = InlineKeyboardBuilder()
 
     for key in dates.keys():
         weekday = get_weekday_from_date(key)
         count = dates[key]
         if count == 1:
-            events = "мероприятие"
+            if for_t:
+                events = "турнир"
+            else:
+                events = "мероприятие"
         elif count in [2, 3, 4]:
-            events = "мероприятия"
+            if for_t:
+                events = "турнира"
+            else:
+                events = "мероприятия"
         else:
-            events = "мероприятий"
+            if for_t:
+                events = "турниров"
+            else:
+                events = "мероприятий"
+
+        if for_t:
+            callback_data = f"tournaments-date_{key}"
+        else:
+            callback_data = f"events-date_{key}"
 
         keyboard.row(
-
-            InlineKeyboardButton(text=f"{key} {weekday} ({count} {events})", callback_data=f"events-date_{key}"))
+            InlineKeyboardButton(text=f"{key} {weekday} ({count} {events})", callback_data=callback_data)
+        )
 
     keyboard.adjust(1)
     return keyboard

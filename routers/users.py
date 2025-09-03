@@ -117,10 +117,10 @@ async def user_events_dates_handler(callback: types.CallbackQuery, session: Any)
     events: list[Event] = await AsyncOrm.get_events(only_active=True, days_ahead=16)
 
     # берем турниры за ближайшие 10 дней
-    tournaments: list[Tournament] = await AsyncOrm.get_all_tournaments(days_ahead=16, session=session)
+    # tournaments: list[Tournament] = await AsyncOrm.get_all_tournaments(days_ahead=16, session=session)
 
     all_events.extend(events)
-    all_events.extend(tournaments)
+    # all_events.extend(tournaments)
 
     sorted_all_events = sorted(all_events, key=lambda x: x.date)
 
@@ -149,10 +149,10 @@ async def user_events_dates_handler(callback: types.CallbackQuery, session: Any)
     events = await AsyncOrm.get_events_for_date(date, only_active=True)     # события кроме турниров
     reserved_events = await AsyncOrm.get_reserved_events_by_user_id(user.id)
 
-    tournaments: list[TournamentTeams] = await AsyncOrm.get_all_tournaments_for_date(date, session)    # турниры
+    # tournaments: list[TournamentTeams] = await AsyncOrm.get_all_tournaments_for_date(date, session)    # турниры
 
     all_events.extend(events)
-    all_events.extend(tournaments)
+    # all_events.extend(tournaments)
 
     msg = f"События на <b>{converted_date} ({weekday})</b>:\n\n" \
           f"События, на которые вы уже записаны, помечены '✅️'\n" \

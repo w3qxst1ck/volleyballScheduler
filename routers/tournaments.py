@@ -1,10 +1,11 @@
+from datetime import datetime
 from typing import Any, List
 
 from aiogram import Router, types, F, Bot
 from aiogram.filters import or_f
 from aiogram.fsm.context import FSMContext
 
-from database.schemas import TeamUsers, User, Tournament, TournamentPayment
+from database.schemas import TeamUsers, User, Tournament, TournamentPayment, TournamentTeams
 from routers.middlewares import CheckPrivateMessageMiddleware, DatabaseMiddleware
 from routers import keyboards as kb, messages as ms
 from routers.fsm_states import RegNewTeamFSM
@@ -18,6 +19,52 @@ router.message.middleware.register(CheckPrivateMessageMiddleware())
 router.callback_query.middleware.register(CheckPrivateMessageMiddleware())
 router.message.middleware.register(DatabaseMiddleware())
 router.callback_query.middleware.register(DatabaseMiddleware())
+
+
+# ALL TOURNAMENTS
+@router.callback_query(F.data == "menu_tournaments")
+async def tournaments_dates(callback: types.CallbackQuery, session: Any) -> None:
+    """Вывод дат с турнирами"""
+    # берем турниры за ближайшие 15 дней
+    tournaments: list[Tournament] = await AsyncOrm.get_all_tournaments(days_ahead=16, session=session)
+
+    # сортируем по дате
+    if tournaments:
+        tournaments_sorted = sorted(tournaments, key=lambda x: x.date)
+    else:
+        tournaments_sorted = []
+
+    # получаем даты
+    tournaments_dates = [t.date for t in tournaments_sorted]
+    unique_dates = utils.get_unique_dates(tournaments_dates)
+
+    msg = "Даты с турнирами:"
+    if not tournaments:
+        msg = "В ближайшее время нет турниров"
+
+    await callback.message.edit_text(msg, reply_markup=kb.dates_keyboard(unique_dates, for_t=True).as_markup())
+
+
+@router.callback_query(lambda callback: callback.data.split("_")[0] == "tournaments-date")
+async def tournaments_dates_handler(callback: types.CallbackQuery, session: Any) -> None:
+    """Вывод турниров в выбранную дату"""
+    date_str = callback.data.split("_")[1]
+    date = datetime.strptime(date_str, "%d.%m.%Y")
+    converted_date = utils.convert_date_named_month(date)
+    weekday = settings.weekdays[datetime.weekday(date)]
+
+    user = await AsyncOrm.get_user_by_tg_id(str(callback.from_user.id))
+
+    tournaments: list[TournamentTeams] = await AsyncOrm.get_all_tournaments_for_date(date, session)    # турниры
+
+    msg = f"Турниры на <b>{converted_date} ({weekday})</b>:\n\n" \
+          f"Турниры, на которые вы уже записаны, помечены '✅️'\n" \
+          f"Турниры, на которые вы записаны в резерв, помечены '📝'"
+
+    await callback.message.edit_text(
+        msg,
+        reply_markup=kb.events_keyboard(tournaments, user, [], for_t=True).as_markup()
+    )
 
 
 # TOURNAMENT CARD
@@ -70,7 +117,7 @@ async def user_tournament_handler(callback: types.CallbackQuery, session: Any, s
     if callback.data.split("_")[0] == "my-tournament":
         back_to = f"menu_my-events"
     else:
-        back_to = f"events-date_{utils.convert_date(tournament.date)}"
+        back_to = f"tournaments-date_{utils.convert_date(tournament.date)}"
 
     # Проверка уровня
     wrong_level = False
