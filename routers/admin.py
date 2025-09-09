@@ -9,6 +9,7 @@ from aiogram.fsm.context import FSMContext
 from database import schemas
 from database.orm import AsyncOrm
 from database.schemas import Tournament
+from logger import logger
 from routers.middlewares import CheckPrivateMessageMiddleware, CheckIsAdminMiddleware, DatabaseMiddleware
 from routers.utils import write_excel_file
 from settings import settings
@@ -89,6 +90,8 @@ async def event_delete_user_handler(callback: types.CallbackQuery, bot: Bot) -> 
 
     await AsyncOrm.delete_user_from_event(event_id, user_id)
     await AsyncOrm.delete_payment(event_id, user_id)
+    logger.info(f"Администратор {callback.from_user.id} удалил пользователя {user_id} с события {event_id}")
+
     event = await AsyncOrm.get_event_with_users(event_id)
 
     # оповещение пользователя об удалении
@@ -515,6 +518,8 @@ async def confirm_payment(callback: types.CallbackQuery, bot: Bot) -> None:
         # подтверждение оплаты
         await AsyncOrm.update_payment_status(event_id, user_id)
 
+        logger.info(f"Администратор {callback.from_user.id} подтвердил платеж пользователя {user_id} на событие {event_id}")
+
         # создание записи в таблице event_users или в reserved
         if to_reserve:
             await AsyncOrm.add_user_to_reserve(event_id, user_id)
@@ -556,6 +561,8 @@ async def confirm_payment(callback: types.CallbackQuery, bot: Bot) -> None:
 
         # удаление записи из таблицы payments
         await AsyncOrm.delete_payment(event_id, user_id)
+
+        logger.info(f"Администратор {callback.from_user.id} отклонил платеж пользователя {user_id} на событие {event_id}")
 
         # сообщение пользователю
         msg = f"🔔 <b>Автоматическое уведомление</b>\n\n❌ Администратор оплату не подтвердил\n" \

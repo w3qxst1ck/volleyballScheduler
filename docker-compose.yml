@@ -9,6 +9,7 @@ services:
       - postgresdb
     volumes:
       - ./players:/app/players
+      - ./logs:/app/logs/
 
   postgresdb:
     image: postgres:13.1

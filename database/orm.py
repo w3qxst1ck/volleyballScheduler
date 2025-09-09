@@ -295,6 +295,8 @@ class AsyncOrm:
             await session.flush()
             await session.commit()
 
+            logger.info(f"Пользователь {user_id} добавлен в основу события {event_id}")
+
     @staticmethod
     async def delete_user_from_event(event_id: int, user_id: int):
         """Удаление tables.User в tables.Event.users_registered"""
@@ -308,6 +310,8 @@ class AsyncOrm:
             await session.execute(query)
             await session.flush()
             await session.commit()
+
+            logger.info(f"Пользователь {user_id} удален с события {event_id}")
 
     @staticmethod
     async def set_level_for_user(user_id: int, level: int):
@@ -342,6 +346,8 @@ class AsyncOrm:
             session.add(reserve)
             await session.flush()
             await session.commit()
+
+            logger.info(f"Пользователь {user_id} добавлен в резерв события {event_id}")
 
     @staticmethod
     async def get_reserved_events_by_user_id(user_id: int) -> List[schemas.ReservedEvent]:
@@ -384,6 +390,8 @@ class AsyncOrm:
         await AsyncOrm.add_user_to_event(event_id, user_id)
         await AsyncOrm.delete_from_reserve(event_id, user_id)
 
+        logger.info(f"Пользователь {user_id} переведен из резерва события {event_id} в основу")
+
     @staticmethod
     async def delete_from_reserve(event_id: int, user_id: int):
         """Удаление пользователя из резерва"""
@@ -397,6 +405,8 @@ class AsyncOrm:
             await session.execute(query)
             await session.flush()
             await session.commit()
+
+            logger.info(f"Пользователь {user_id} отменил запись в резерв события {event_id}")
 
     # PAYMENTS
     @staticmethod
@@ -412,6 +422,7 @@ class AsyncOrm:
 
             await session.flush()
             await session.commit()
+            logger.info(f"Создан платеж пользователя {user_id} на событие {event_id}")
 
     @staticmethod
     async def get_payment_by_id(payment_id: int) -> schemas.Payment:
@@ -479,6 +490,8 @@ class AsyncOrm:
             await session.flush()
             await session.commit()
 
+            logger.info(f"Подтвержден платеж пользователя {user_id} на событие {event_id}")
+
     @staticmethod
     async def delete_payment(event_id: int, user_id: int) -> None:
         """Удаление из таблицы payments"""
@@ -493,6 +506,8 @@ class AsyncOrm:
             await session.execute(query)
             await session.flush()
             await session.commit()
+
+            logger.info(f"Платеж пользователя {user_id} на событие {event_id} удален")
 
     @staticmethod
     async def get_all_players_info() -> List[schemas.User]:

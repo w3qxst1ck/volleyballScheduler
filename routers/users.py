@@ -287,6 +287,8 @@ async def register_paid_event(callback: types.CallbackQuery, bot: Bot) -> None:
         )
         return
 
+    logger.info(f"Пользователь {user_id} подтвердил свой платеж на событие {event_id}")
+
     # создание платежа в БД
     await AsyncOrm.create_payments(user_id, event_id)
 
@@ -428,6 +430,8 @@ async def unregister_form_my_event_handler(callback: types.CallbackQuery, bot: B
         await AsyncOrm.delete_from_reserve(event_id, user_id)
     else:
         await AsyncOrm.delete_user_from_event(event_id, user_id)
+
+    logger.info(f"Пользователь {user_id} отменил запись{' в резерв' if reserved_event else ''} на событие {event_id}")
 
     await AsyncOrm.delete_payment(event_id, user_id)
 
