@@ -54,7 +54,7 @@ async def get_events_handler(message: types.Message | types.CallbackQuery, sessi
 
 # ADMIN EVENT CARD
 @router.callback_query(lambda callback: callback.data.split("_")[0] == "admin-event")
-async def event_info_handler(callback: types.CallbackQuery) -> None:
+async def event_info_handler(callback: types.CallbackQuery, admin: bool) -> None:
     """Карточка события для админа"""
     event_id = int(callback.data.split("_")[1])
     event = await AsyncOrm.get_event_with_users(event_id)
@@ -62,7 +62,7 @@ async def event_info_handler(callback: types.CallbackQuery) -> None:
     # получаем пользователь в резерве события
     reserved_users = await AsyncOrm.get_reserved_users_by_event_id(event_id)
 
-    msg = ms.event_card_for_user_message(event, payment=None, reserved_users=reserved_users)
+    msg = ms.event_card_for_user_message(event, payment=None, reserved_users=reserved_users, admin=admin)
     msg += "\nЧтобы удалить участника с события, нажмите кнопку с соответствующим номером участника"
 
     await callback.message.edit_text(
@@ -83,7 +83,7 @@ async def event_info_handler(callback: types.CallbackQuery) -> None:
 
 
 @router.callback_query(lambda callback: callback.data.split("_")[0] == "admin-event-user-delete")
-async def event_delete_user_handler(callback: types.CallbackQuery, bot: Bot) -> None:
+async def event_delete_user_handler(callback: types.CallbackQuery, bot: Bot, admin: bool) -> None:
     """Удаление пользователя в событии для админа"""
     event_id = int(callback.data.split("_")[1])
     user_id = int(callback.data.split("_")[2])
@@ -122,7 +122,7 @@ async def event_delete_user_handler(callback: types.CallbackQuery, bot: Bot) -> 
     # получаем обновленное событие
     updated_event = await AsyncOrm.get_event_with_users(event_id)
     # отправляем сообщение администратору (обновленное "Управление событиями")
-    msg_for_admin = ms.event_card_for_user_message(updated_event, payment=None, reserved_users=reserved_users)
+    msg_for_admin = ms.event_card_for_user_message(updated_event, payment=None, reserved_users=reserved_users, admin=admin)
     msg_for_admin += "\nЧтобы удалить участника с события, нажмите кнопку с соответствующим номером участника"
     await callback.message.answer(msg_for_admin, disable_web_page_preview=True, reply_markup=kb.event_card_keyboard_admin(event).as_markup())
 

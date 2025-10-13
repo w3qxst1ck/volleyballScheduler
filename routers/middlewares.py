@@ -66,3 +66,21 @@ class DatabaseMiddleware(BaseMiddleware):
             return await handler(event, data)
         finally:
             await conn.close()
+
+
+class AdminMiddleware(BaseMiddleware):
+    async def __call__(
+        self,
+        handler: Callable[[TelegramObject, dict[str, Any]], Awaitable[Any]],
+        event: TelegramObject,
+        data: dict[str, Any],
+    ) -> Any:
+        data["admin"] = self._check_admin_access(event)
+        return await handler(event, data)
+
+    def _check_admin_access(self, event: TelegramObject) -> bool:
+        try:
+            admin_ids: list[str] = settings.admins
+            return str(event.from_user.id) in admin_ids
+        except Exception:
+            return False

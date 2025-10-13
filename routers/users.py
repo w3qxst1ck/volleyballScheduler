@@ -166,7 +166,7 @@ async def user_events_dates_handler(callback: types.CallbackQuery, session: Any)
 
 # FOR EVENTS
 @router.callback_query(lambda callback: callback.data.split("_")[0] == "user-event")
-async def user_event_handler(callback: types.CallbackQuery) -> None:
+async def user_event_handler(callback: types.CallbackQuery, admin: bool) -> None:
     """Вывод карточки мероприятия для пользователя"""
 
     event_id = int(callback.data.split("_")[1])
@@ -183,7 +183,7 @@ async def user_event_handler(callback: types.CallbackQuery) -> None:
     # получаем пользователь в резерве события
     reserved_users = await AsyncOrm.get_reserved_users_by_event_id(event_id)
 
-    msg = ms.event_card_for_user_message(event_with_users, payment, reserved_users)
+    msg = ms.event_card_for_user_message(event_with_users, payment, reserved_users, admin=admin)
 
     await callback.message.edit_text(
         msg,
@@ -200,7 +200,7 @@ async def user_event_handler(callback: types.CallbackQuery) -> None:
 
 @router.callback_query(lambda callback: callback.data.split("_")[0] == "reg-user"
                        or callback.data.split("_")[0] == "reg-user-reserve")
-async def register_user_on_event_or_reserve(callback: types.CallbackQuery) -> None:
+async def register_user_on_event_or_reserve(callback: types.CallbackQuery, admin: bool) -> None:
     """Регистрация пользователя на событие или в резерв"""
     event_id = int(callback.data.split("_")[1])
     user_id = int(callback.data.split("_")[2])
@@ -233,7 +233,7 @@ async def register_user_on_event_or_reserve(callback: types.CallbackQuery) -> No
         # получаем пользователей в резерве события
         reserved_users = await AsyncOrm.get_reserved_users_by_event_id(event_id)
 
-        msg = ms.event_card_for_user_message(event_with_users, payment, reserved_users)
+        msg = ms.event_card_for_user_message(event_with_users, payment, reserved_users, admin=admin)
         await callback.message.edit_text("❗Вы не можете записаться на данное событие, "
                                          "так как ваш уровень ниже необходимого")
         await callback.message.answer(
@@ -373,7 +373,7 @@ async def user_event_registered_handler(callback: types.CallbackQuery, session: 
 
 
 @router.callback_query(lambda callback: callback.data.split("_")[0] == "my-events")
-async def my_event_info_handler(callback: types.CallbackQuery) -> None:
+async def my_event_info_handler(callback: types.CallbackQuery, admin: bool) -> None:
     """Карточка события в Моих мероприятиях"""
     payment_id = int(callback.data.split("_")[1])
 
@@ -381,7 +381,7 @@ async def my_event_info_handler(callback: types.CallbackQuery) -> None:
     event = await AsyncOrm.get_event_with_users(payment.event_id)
     reserved_users = await AsyncOrm.get_reserved_users_by_event_id(event.id)
 
-    msg = ms.event_card_for_user_message(event, payment, reserved_users)
+    msg = ms.event_card_for_user_message(event, payment, reserved_users, admin=admin)
 
     # для кнопки отмены
     reserved_event = False

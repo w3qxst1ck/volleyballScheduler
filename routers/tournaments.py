@@ -237,7 +237,7 @@ async def get_team_title(message: types.Message, state: FSMContext, session: Any
 
 # КАРТОЧКА КОМАНДЫ
 @router.callback_query(F.data.split("_")[0] == "register-in-team")
-async def team_card(callback: types.CallbackQuery, session: Any) -> None:
+async def team_card(callback: types.CallbackQuery, session: Any, admin: bool) -> None:
     """Карточка команды"""
     team_id = int(callback.data.split("_")[1])
     tournament_id = int(callback.data.split("_")[2])
@@ -291,7 +291,7 @@ async def team_card(callback: types.CallbackQuery, session: Any) -> None:
             wrong_level = True
 
     message = ms.team_card(team, user_already_in_team, user_already_has_another_team, over_points, over_players_count,
-                           wrong_level, payment)
+                           wrong_level, payment, admin=admin)
 
     if come_from == "mm":
         back_to = f"user-tournament_{tournament_id}"
@@ -306,7 +306,7 @@ async def team_card(callback: types.CallbackQuery, session: Any) -> None:
 
 # REG USER IN TEAM
 @router.callback_query(F.data.split("_")[0] == "reg-user-in-team")
-async def reg_user_in_team(callback: types.CallbackQuery, session: Any, bot: Bot) -> None:
+async def reg_user_in_team(callback: types.CallbackQuery, session: Any, bot: Bot, admin: bool) -> None:
     """Регистрация пользователя в существующую команду"""
     team_id = int(callback.data.split("_")[1])
     tournament_id = int(callback.data.split("_")[2])
@@ -318,7 +318,7 @@ async def reg_user_in_team(callback: types.CallbackQuery, session: Any, bot: Bot
     user: User = await AsyncOrm.get_user_by_tg_id(tg_id)
 
     # Отправляем сообщение капитану команды
-    msg_for_leader = ms.message_for_team_leader(user, team, tournament)
+    msg_for_leader = ms.message_for_team_leader(user, team, tournament, admin=admin)
     keyboard = kb.yes_no_accept_user_in_team_keyboard(team_id, user.id, tournament_id)
 
     await bot.send_message(team_leader.tg_id, msg_for_leader, reply_markup=keyboard.as_markup())
@@ -332,7 +332,7 @@ async def reg_user_in_team(callback: types.CallbackQuery, session: Any, bot: Bot
 # ACCEPT USER IN TEAM FOR TEAM LEADER
 @router.callback_query(or_f(F.data.split("_")[0] == "accept-user-in-team",
                             F.data.split("_")[0] == "refuse-user-in-team"))
-async def accept_refuse_user_in_team(callback: types.CallbackQuery, session: Any, bot: Bot) -> None:
+async def accept_refuse_user_in_team(callback: types.CallbackQuery, session: Any, bot: Bot, admin: bool) -> None:
     """Прием или отклонение заявки пользователя в команду"""
     team_id = int(callback.data.split("_")[1])
     user_id = int(callback.data.split("_")[2])
@@ -377,8 +377,13 @@ async def accept_refuse_user_in_team(callback: types.CallbackQuery, session: Any
         else:
             try:
                 await AsyncOrm.add_user_in_team(team_id, user_id, session)
-                msg_for_captain = f" ✅ <a href='tg://user?id={user.tg_id}'>{user.firstname} {user.lastname}</a> " \
-                                  f"({settings.levels[user.level]}) добавлен в команду <b>{team.title}</b>"
+                if admin:
+                    msg_for_captain = f" ✅ <a href='tg://user?id={user.tg_id}'>{user.firstname} {user.lastname}</a> " \
+                                      f"({settings.levels[user.level]}) добавлен в команду <b>{team.title}</b>"
+                else:
+                    msg_for_captain = f" ✅ {user.firstname} {user.lastname} " \
+                                      f"({settings.levels[user.level]}) добавлен в команду <b>{team.title}</b>"
+
                 msg_for_user = f"✅ Капитан команды добавил вас в команду \"{team.title}\""
 
             # при ошибке (поль-ль уже в команде, слишком много людей, команда удалена и тд.)
@@ -389,8 +394,13 @@ async def accept_refuse_user_in_team(callback: types.CallbackQuery, session: Any
 
     # отклонение
     else:
-        msg_for_captain = f" ❌ Запрос <a href='tg://user?id={user.tg_id}'>{user.firstname} {user.lastname}</a> " \
-                          f"({settings.levels[user.level]}) в команду \"{team.title}\" <b>отклонен</b>"
+        if admin:
+            msg_for_captain = f" ❌ Запрос <a href='tg://user?id={user.tg_id}'>{user.firstname} {user.lastname}</a> " \
+                              f"({settings.levels[user.level]}) в команду \"{team.title}\" <b>отклонен</b>"
+        else:
+            msg_for_captain = f" ❌ Запрос {user.firstname} {user.lastname} " \
+                              f"({settings.levels[user.level]}) в команду \"{team.title}\" <b>отклонен</b>"
+
         msg_for_user = f" ❌ Капитан команды не добавил вас в команду \"{team.title}\""
 
     # отвечаем капитану
@@ -425,7 +435,7 @@ async def leave_from_team(callback: types.CallbackQuery, session: Any) -> None:
 
 
 @router.callback_query(or_f(F.data.split("_")[0] == "c-del-team", F.data.split("_")[0] == "del-team"))
-async def delete_team_from_tournament(callback: types.CallbackQuery, session: Any, bot: Bot) -> None:
+async def delete_team_from_tournament(callback: types.CallbackQuery, session: Any, bot: Bot, admin: bool) -> None:
     """Удаление команды или пользователя с турнира"""
     team_id = int(callback.data.split("_")[1])
     tournament_id = int(callback.data.split("_")[2])
@@ -445,9 +455,16 @@ async def delete_team_from_tournament(callback: types.CallbackQuery, session: An
 
             # уведомление участников команды об удалении команды
             converted_date = convert_date_named_month(tournament.date)
-            msg = f"🔔 <b>Автоматическое уведомление</b>\n\n" \
-                  f"Капитан команды <a href='tg://user?id={user.tg_id}'>{user.firstname} {user.lastname}</a> удалил команду " \
-                  f"<b>{team.title}</b> с турнира \"{tournament.title}\" {converted_date}"
+
+            if admin:
+                msg = f"🔔 <b>Автоматическое уведомление</b>\n\n" \
+                      f"Капитан команды <a href='tg://user?id={user.tg_id}'>{user.firstname} {user.lastname}</a> удалил команду " \
+                      f"<b>{team.title}</b> с турнира \"{tournament.title}\" {converted_date}"
+            else:
+                msg = f"🔔 <b>Автоматическое уведомление</b>\n\n" \
+                      f"Капитан команды {user.firstname} {user.lastname} удалил команду " \
+                      f"<b>{team.title}</b> с турнира \"{tournament.title}\" {converted_date}"
+
             for u in team.users:
                 # пропускаем капитана
                 if u.id == team.team_leader_id:
@@ -504,8 +521,13 @@ async def delete_team_from_tournament(callback: types.CallbackQuery, session: An
             # уведомление капитана
             captain = await AsyncOrm.get_user_by_id(team.team_leader_id)
             converted_date = convert_date_named_month(tournament.date)
-            msg = f"ℹ️ Пользователь <a href='tg://user?id={user.tg_id}'>{user.firstname} {user.lastname}</a> вышел из команды " \
-                  f"<b>{team.title}</b> турнира \"{tournament.title}\" {converted_date}"
+            if admin:
+                msg = f"ℹ️ Пользователь <a href='tg://user?id={user.tg_id}'>{user.firstname} {user.lastname}</a> вышел из команды " \
+                      f"<b>{team.title}</b> турнира \"{tournament.title}\" {converted_date}"
+            else:
+                msg = f"ℹ️ Пользователь {user.firstname} {user.lastname} вышел из команды " \
+                      f"<b>{team.title}</b> турнира \"{tournament.title}\" {converted_date}"
+
             try:
                 await bot.send_message(captain.tg_id, msg)
             except Exception:

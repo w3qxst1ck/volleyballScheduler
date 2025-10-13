@@ -22,7 +22,7 @@ router.callback_query.middleware.register(DatabaseMiddleware())
 
 # REG LIBERO IN TEAM
 @router.callback_query(F.data.split("_")[0] == "reg-libero-in-team")
-async def reg_libero_in_team(callback: types.CallbackQuery, session: Any, bot: Bot) -> None:
+async def reg_libero_in_team(callback: types.CallbackQuery, session: Any, bot: Bot, admin: bool) -> None:
     """Регистрация либеро в существующую команду"""
     team_id = int(callback.data.split("_")[1])
     tournament_id = int(callback.data.split("_")[2])
@@ -46,11 +46,11 @@ async def reg_libero_in_team(callback: types.CallbackQuery, session: Any, bot: B
         over_points = True if utils.calculate_team_points(future_users) > settings.tournament_points[tournament.level][1] else False
 
         msg_for_leader = ms.message_for_team_leader_about_libero(user, team, tournament, already_have_libero,
-                                                                     over_points, team_libero, wrong_level)
+                                                                     over_points, admin, team_libero, wrong_level)
 
     else:
         over_points = False
-        msg_for_leader = ms.message_for_team_leader_about_libero(user, team, tournament, already_have_libero, over_points)
+        msg_for_leader = ms.message_for_team_leader_about_libero(user, team, tournament, already_have_libero, over_points, admin=admin)
 
     # Отправляем сообщение капитану команды
     keyboard = kb.yes_no_accept_user_in_team_keyboard(team_id, user.id, tournament_id, for_libero=True)
@@ -65,7 +65,7 @@ async def reg_libero_in_team(callback: types.CallbackQuery, session: Any, bot: B
 # ACCEPT LIBERO IN TEAM FOR TEAM LEADER
 @router.callback_query(or_f(F.data.split("_")[0] == "accept-libero-in-team",
                             F.data.split("_")[0] == "refuse-libero-in-team"))
-async def accept_refuse_user_in_team(callback: types.CallbackQuery, session: Any, bot: Bot) -> None:
+async def accept_refuse_user_in_team(callback: types.CallbackQuery, session: Any, bot: Bot, admin: bool) -> None:
     """Прием или отклонение заявки либеро в команду"""
     team_id = int(callback.data.split("_")[1])
     user_id = int(callback.data.split("_")[2])
@@ -107,8 +107,13 @@ async def accept_refuse_user_in_team(callback: types.CallbackQuery, session: Any
                 await AsyncOrm.add_user_in_team(team_id, user_id, session)
                 await AsyncOrm.update_team_libero(team_id, user_id, session)
 
-                msg_for_captain = f" ✅ <a href='tg://user?id={user.tg_id}'>{user.firstname} {user.lastname}</a> " \
-                                  f"({settings.levels[user.level]}) добавлен в команду <b>{team.title}</b> в качестве либеро"
+                if admin:
+                    msg_for_captain = f" ✅ <a href='tg://user?id={user.tg_id}'>{user.firstname} {user.lastname}</a> " \
+                                      f"({settings.levels[user.level]}) добавлен в команду <b>{team.title}</b> в качестве либеро"
+                else:
+                    msg_for_captain = f" ✅ {user.firstname} {user.lastname} " \
+                                      f"({settings.levels[user.level]}) добавлен в команду <b>{team.title}</b> в качестве либеро"
+
                 msg_for_user = f"✅ Капитан команды добавил вас в команду \"{team.title}\" в качестве <b>либеро</b> " \
                                f"на турнир <b>{tournament.type}</b> {tournament.title}"
 
@@ -136,10 +141,17 @@ async def accept_refuse_user_in_team(callback: types.CallbackQuery, session: Any
                 if old_libero.level > tournament.level:
                     reason = ", так как уровень игрока превышает допустимый на турнире"
 
-                msg_for_captain = f" ✅ <a href='tg://user?id={user.tg_id}'>{user.firstname} {user.lastname}</a> " \
-                                  f"({settings.levels[user.level]}) добавлен в команду <b>{team.title}</b> в качестве либеро\n" \
-                                  f"❗Игрок <a href='tg://user?id={old_libero.tg_id}'>{old_libero.firstname} {old_libero.lastname}</a> ({settings.levels[old_libero.level]}) " \
-                                  f"исключен из команды{reason}"
+                if admin:
+                    msg_for_captain = f" ✅ <a href='tg://user?id={user.tg_id}'>{user.firstname} {user.lastname}</a> " \
+                                      f"({settings.levels[user.level]}) добавлен в команду <b>{team.title}</b> в качестве либеро\n" \
+                                      f"❗Игрок <a href='tg://user?id={old_libero.tg_id}'>{old_libero.firstname} {old_libero.lastname}</a> ({settings.levels[old_libero.level]}) " \
+                                      f"исключен из команды{reason}"
+                else:
+                    msg_for_captain = f" ✅ {user.firstname} {user.lastname} " \
+                                      f"({settings.levels[user.level]}) добавлен в команду <b>{team.title}</b> в качестве либеро\n" \
+                                      f"❗Игрок {old_libero.firstname} {old_libero.lastname} ({settings.levels[old_libero.level]}) " \
+                                      f"исключен из команды{reason}"
+
                 msg_for_user = f"✅ Капитан команды добавил вас в команду \"{team.title}\" в качестве <b>либеро</b>"
 
                 # оповещаем старого либеро
@@ -156,8 +168,13 @@ async def accept_refuse_user_in_team(callback: types.CallbackQuery, session: Any
                     await AsyncOrm.add_user_in_team(team_id, user_id, session)
                     await AsyncOrm.update_team_libero(team_id, user_id, session)
 
-                    msg_for_captain = f" ✅ <a href='tg://user?id={user.tg_id}'>{user.firstname} {user.lastname}</a> " \
-                                      f"({settings.levels[user.level]}) добавлен в команду <b>{team.title}</b> в качестве либеро"
+                    if admin:
+                        msg_for_captain = f" ✅ <a href='tg://user?id={user.tg_id}'>{user.firstname} {user.lastname}</a> " \
+                                          f"({settings.levels[user.level]}) добавлен в команду <b>{team.title}</b> в качестве либеро"
+                    else:
+                        msg_for_captain = f" ✅ {user.firstname} {user.lastname} " \
+                                          f"({settings.levels[user.level]}) добавлен в команду <b>{team.title}</b> в качестве либеро"
+
                     msg_for_user = f"✅ Капитан команды добавил вас в команду \"{team.title}\" в качестве <b>либеро</b>"
 
                 # при ошибке (поль-ль уже в команде, слишком много людей, команда удалена и тд.)
@@ -168,8 +185,12 @@ async def accept_refuse_user_in_team(callback: types.CallbackQuery, session: Any
 
     # отклонение
     else:
-        msg_for_captain = f" ❌ Запрос <a href='tg://user?id={user.tg_id}'>{user.firstname} {user.lastname}</a> " \
-                          f"({settings.levels[user.level]}) в команду \"{team.title}\" <b>отклонен</b>"
+        if admin:
+            msg_for_captain = f" ❌ Запрос <a href='tg://user?id={user.tg_id}'>{user.firstname} {user.lastname}</a> " \
+                              f"({settings.levels[user.level]}) в команду \"{team.title}\" <b>отклонен</b>"
+        else:
+            msg_for_captain = f" ❌ Запрос {user.firstname} {user.lastname} " \
+                              f"({settings.levels[user.level]}) в команду \"{team.title}\" <b>отклонен</b>"
         msg_for_user = f" ❌ Капитан команды не добавил вас в команду \"{team.title}\""
 
     # отвечаем капитану
@@ -181,7 +202,7 @@ async def accept_refuse_user_in_team(callback: types.CallbackQuery, session: Any
 
 # CHOOSE LIBERO BY CAPTAIN
 @router.callback_query(F.data.split("_")[0] == "choose-libero")
-async def choose_libero_list(callback: types.CallbackQuery, session: Any) -> None:
+async def choose_libero_list(callback: types.CallbackQuery, session: Any, admin: bool) -> None:
     """Выбор либеро из членов команды для капитана"""
     team_id = int(callback.data.split("_")[1])
     tournament_id = int(callback.data.split("_")[2])
@@ -191,7 +212,10 @@ async def choose_libero_list(callback: types.CallbackQuery, session: Any) -> Non
     msg = f"<b>{team.title}</b>\n\n"
 
     for idx, user in enumerate(team.users, start=1):
-        msg += f"<b>{idx}.</b> <a href='tg://user?id={user.tg_id}'>{user.firstname} {user.lastname}</a> {settings.levels[user.level]}\n"
+        if admin:
+            msg += f"<b>{idx}.</b> <a href='tg://user?id={user.tg_id}'>{user.firstname} {user.lastname}</a> {settings.levels[user.level]}\n"
+        else:
+            msg += f"<b>{idx}.</b> {user.firstname} {user.lastname} {settings.levels[user.level]}\n"
 
     msg += "\nС помощью клавиатуры ниже выберите либеро"
 
