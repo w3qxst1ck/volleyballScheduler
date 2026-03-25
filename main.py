@@ -3,6 +3,7 @@ from datetime import datetime
 
 import aiogram as io
 from aiogram.client.default import DefaultBotProperties
+from aiogram.client.session.aiohttp import AiohttpSession
 from aiogram.enums import ParseMode
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.types import BotCommand, BotCommandScopeDefault
@@ -39,7 +40,10 @@ async def set_description(bot: io.Bot):
 
 async def start_bot() -> None:
     """Запуск бота"""
-    bot = io.Bot(settings.bot_token, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
+    session = AiohttpSession(proxy=f"{settings.proxy_protocol}://{settings.proxy_ip}:{settings.proxy_port}")
+
+
+    bot = io.Bot(settings.bot_token, session=session, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
     await set_commands(bot)
     await set_description(bot)
 

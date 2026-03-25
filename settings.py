@@ -81,6 +81,12 @@ class Settings(BaseSettings):
     kick_team_without_pay_days: int = 4
     tournament_min_team_hours: int = 10
     tournament_min_users_days: int = 1
+
+    proxy_ip: str
+    proxy_port: int
+    proxy_protocol: str
+
+
     db: Database = Database()
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
